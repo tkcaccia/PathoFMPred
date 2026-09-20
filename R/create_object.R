@@ -95,7 +95,8 @@ pathofmpred_control <- function(
   drop(fit$lda_scores[, 2L, index] - fit$lda_scores[, 1L, index])
 }
 
-.pathofm_fit_endpoint <- function(X, y, type, control, endpoint, feature_names) {
+.pathofm_fit_endpoint <- function(X, y, type, control, endpoint, feature_names,
+                                  class_labels = NULL) {
   extra <- .pathofm_fastpls_args(control)
   selected <- integer(control$repeats)
   repeat_metrics <- vector("list", control$repeats)
@@ -165,6 +166,7 @@ pathofmpred_control <- function(
     training_n = length(y),
     training_positive = if (type == "binary") sum(y == "1") else NA_integer_,
     training_negative = if (type == "binary") sum(y == "0") else NA_integer_,
+    class_labels = if (type == "binary") class_labels else NULL,
     nested_cv = do.call(rbind, repeat_metrics),
     selected_components_across_repeats = selected,
     fastPLS_version = as.character(utils::packageVersion("fastPLS")),
@@ -174,8 +176,42 @@ pathofmpred_control <- function(
     model_id = model_id, endpoint = endpoint, outcome_type = type,
     n = length(y), positive = artifact$training_positive,
     negative = artifact$training_negative, ncomp = ncomp,
+    negative_label = if (type == "binary") class_labels$negative else NA_character_,
+    positive_label = if (type == "binary") class_labels$positive else NA_character_,
     stringsAsFactors = FALSE
   ))
+}
+
+.pathofm_positive_class <- function(values, endpoint, positive_class) {
+  observed <- unique(as.character(values))
+  if (length(observed) != 2L) {
+    stop("Binary outcome ", endpoint, " must contain exactly two observed classes.",
+         call. = FALSE)
+  }
+  selected <- NULL
+  if (!is.null(positive_class)) {
+    if (!is.null(names(positive_class)) && endpoint %in% names(positive_class)) {
+      selected <- as.character(positive_class[[endpoint]])
+    } else if (length(positive_class) == 1L &&
+               (is.null(names(positive_class)) || !nzchar(names(positive_class)))) {
+      selected <- as.character(positive_class)
+    }
+  }
+  canonical <- sort(observed)
+  if (is.null(selected) && identical(canonical, c("0", "1"))) selected <- "1"
+  if (is.null(selected) && identical(canonical, c("FALSE", "TRUE"))) selected <- "TRUE"
+  if (is.null(selected)) {
+    stop(
+      "positive_class must identify the event class for binary outcome ",
+      endpoint, ". Use a named character vector when fitting several outcomes.",
+      call. = FALSE
+    )
+  }
+  if (length(selected) != 1L || is.na(selected) || !selected %in% observed) {
+    stop("positive_class for ", endpoint, " must be one of: ",
+         paste(observed, collapse = ", "), ".", call. = FALSE)
+  }
+  list(negative = setdiff(observed, selected)[[1L]], positive = selected)
 }
 
 #' Build a portable PathoFMPred model collection
@@ -198,6 +234,10 @@ pathofmpred_control <- function(
 #' @param outcome_types Optional named character vector containing `continuous`
 #'   or `binary`. Otherwise numeric two-level outcomes are binary and other
 #'   numeric outcomes are continuous.
+#' @param positive_class Event-class label for binary outcomes. Supply either
+#'   one value when fitting a single binary outcome or a named character vector
+#'   keyed by endpoint. Zero/one and FALSE/TRUE outcomes default to one and TRUE;
+#'   all other binary labels require an explicit value.
 #' @param control Settings created by [pathofmpred_control()].
 #' @param output_file Optional `.rds` destination.
 #' @return A `PathoFMPredObject` containing fitted models, a registry, nested-CV
@@ -207,7 +247,7 @@ create_pathofmpred_object <- function(
     feature_table, outcome_table, id_column,
     aggregation = c("mean", "median"), foundation_model = "custom",
     feature_columns = NULL, outcome_columns = NULL, outcome_types = NULL,
-    control = pathofmpred_control(), output_file = NULL) {
+    positive_class = NULL, control = pathofmpred_control(), output_file = NULL) {
   aggregation <- match.arg(aggregation)
   features <- .pathofm_read_table(feature_table, "feature_table")
   outcomes <- .pathofm_read_table(outcome_table, "outcome_table")
@@ -278,6 +318,7 @@ create_pathofmpred_object <- function(
     if (!declared %in% c("continuous", "binary")) {
       stop("outcome_types for ", endpoint, " must be continuous or binary.", call. = FALSE)
     }
+    class_labels <- NULL
     if (declared == "continuous") {
       if (!is.numeric(values) || length(values) < control$minimum_continuous) {
         skipped[[endpoint]] <- "continuous outcome was nonnumeric or below minimum_continuous"
@@ -285,14 +326,18 @@ create_pathofmpred_object <- function(
       }
       y <- as.numeric(values)
     } else {
-      y <- factor(values)
-      if (nlevels(y) != 2L || min(table(y)) < control$minimum_binary_class) {
+      labels <- .pathofm_positive_class(values, endpoint, positive_class)
+      y <- factor(ifelse(as.character(values) == labels$positive, 1L, 0L),
+                  levels = c(0L, 1L))
+      class_labels <- labels
+      if (min(table(y)) < control$minimum_binary_class) {
         skipped[[endpoint]] <- "binary outcome had fewer than two classes or was below minimum_binary_class"
         next
       }
-      y <- factor(as.integer(y) - 1L, levels = c(0L, 1L))
     }
-    fitted <- .pathofm_fit_endpoint(X, y, declared, control, endpoint, colnames(pooled))
+    fitted <- .pathofm_fit_endpoint(
+      X, y, declared, control, endpoint, colnames(pooled), class_labels
+    )
     models[[fitted$artifact$model_id]] <- fitted$artifact
     registry[[length(registry) + 1L]] <- fitted$registry
   }

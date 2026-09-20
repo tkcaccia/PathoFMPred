@@ -12,6 +12,10 @@ Authors@R: c(
     person("Ekene Emmanuel", "Nweke", role = "aut"),
     person("Silvano", "Piazza", role = "aut"),
     person("Dinesh", "Gupta", role = "aut"),
+    person("Alessia", "Vignoli", role = "aut",
+      email = "vignoli@cerm.unifi.it"),
+    person("Leonardo", "Tenori", role = "aut",
+      email = "tenori@cerm.unifi.it"),
     person("Stefano", "Cacciatore", role = c("aut", "cre"),
       email = "tkcaccia@gmail.com")
   )
@@ -24,12 +28,12 @@ Description: Builds and applies portable cancer-specific partial least-squares
     and Prov-GigaPath collections are obtained by an explicit user download.
     TITAN-derived fitted parameters are not distributed publicly. Outputs are
     research estimates without external-validation or clinical-use claims.
-License: GPL-3
+License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.2.0)
 Imports:
     digest,
-    fastPLS,
+    fastPLS (>= 0.3),
     ggplot2,
     rmarkdown,
     stats,
