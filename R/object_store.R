@@ -128,7 +128,7 @@ fetch_pathofmpred_models <- function(
     destination = .pathofm_user_model_dir(),
     base_url = getOption(
       "PathoFMPred.model_base_url",
-      "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v1"
+      "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v2"
     ),
     overwrite = FALSE, quiet = FALSE, verify = TRUE) {
   foundation_model <- unique(match.arg(
@@ -137,13 +137,24 @@ fetch_pathofmpred_models <- function(
   dir.create(destination, recursive = TRUE, showWarnings = FALSE)
   paths <- stats::setNames(character(length(foundation_model)), foundation_model)
   expected_sha256 <- c(
-    GigaSSL = "d76a00dfc9e4817da0630a84a61a3b16135e5b3420264893114ae7f96450c588",
-    ProvGigaPath = "c06899f08d99036a0c23267492a8ae04f4bac4c0371a5d6923c9c40e800dd3cc"
+    GigaSSL = "3ccfb101a24cc1ac9c6564d42c3392a0a139ccddd052cefb326db47d1d54ae1c",
+    ProvGigaPath = "712b39f122f5efddc8d182700d84f47314943870de42f5596aa4bec6daeb67c8"
   )
   for (model in foundation_model) {
     filename <- paste0("pathofmpred_", .pathofm_slug(model), ".rds")
     target <- file.path(destination, filename)
     if (file.exists(target) && !isTRUE(overwrite)) {
+      if (isTRUE(verify)) {
+        observed <- digest::digest(file = target, algo = "sha256",
+                                   serialize = FALSE)
+        if (!identical(unname(observed), unname(expected_sha256[[model]]))) {
+          stop(
+            "SHA-256 verification failed for the existing ", model,
+            " object. Set overwrite = TRUE to download a clean copy.",
+            call. = FALSE
+          )
+        }
+      }
       object <- readRDS(target)
       validate_pathofmpred_object(object)
       paths[[model]] <- normalizePath(target)

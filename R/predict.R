@@ -178,10 +178,18 @@ predict_pathofm <- function(cancer, features,
       }
       pct <- .prediction_percentile(info$model_id, score, reference,
                                     foundation_model)
+      class_labels <- artifact$class_labels
+      cls_label <- if (!is.null(class_labels) &&
+                       all(c("negative", "positive") %in% names(class_labels))) {
+        ifelse(cls == "1", class_labels$positive, class_labels$negative)
+      } else {
+        cls
+      }
     } else {
       value <- if (length(dim(pred$Ypred)) == 3L) drop(pred$Ypred[, 1, 1]) else drop(pred$Ypred)
       score <- rep(NA_real_, length(value))
       cls <- rep(NA_character_, length(value))
+      cls_label <- rep(NA_character_, length(value))
       operating_threshold <- NA_real_
       class_rule <- "not applicable"
       pct <- .prediction_percentile(info$model_id, value, reference,
@@ -270,6 +278,7 @@ predict_pathofm <- function(cancer, features,
       n_slides = pooled$n_slides[keep], model_id = info$model_id,
       family = info$family, endpoint = info$endpoint, outcome_type = info$outcome_type,
       prediction = value, predicted_class = cls, lda_score = score,
+      predicted_class_label = cls_label,
       operating_threshold = operating_threshold,
       binary_class_rule = class_rule,
       # reference_percentile is retained for backward compatibility. For a
@@ -439,6 +448,177 @@ predict_pathofm <- function(cancer, features,
   rownames(ans) <- NULL
   class(ans) <- c("pathofm_predictions", class(ans))
   ans
+}
+
+.read_pathofmpred_object <- function(object) {
+  if (is.character(object) && length(object) == 1L && file.exists(object)) {
+    object <- readRDS(object)
+  }
+  validate_pathofmpred_object(object)
+  object
+}
+
+#' Apply a user-created PathoFMPred object
+#'
+#' This function applies an object returned by [create_pathofmpred_object()].
+#' It is the supported inference route for locally constructed TITAN objects
+#' and for future foundation-model representations that are not distributed by
+#' the package. Repeated feature rows are pooled using the aggregation rule
+#' recorded when the object was created, unless `aggregation` is supplied.
+#'
+#' @param object A `PathoFMPredObject` or the path to an `.rds` file containing
+#'   one.
+#' @param features A data frame or matrix containing the named features used to
+#'   fit `object`. An identifier column may be selected with `id_column`.
+#' @param patient_id Optional identifier per feature row. Use either
+#'   `patient_id` or `id_column`, not both. Repeated identifiers are pooled.
+#' @param id_column Optional identifier-column name in `features`.
+#' @param outcome_type One or both of `continuous` and `binary`.
+#' @param endpoints Optional endpoint names to apply.
+#' @param aggregation Optional `mean` or `median` override. By default the
+#'   object's model-development aggregation is used.
+#' @param warn_ood Warn when more than 5 percent of dimensions are outside the
+#'   fitted training range.
+#' @return A long data frame with one row per patient and fitted endpoint.
+#'   Binary outputs include the original event-class label. Scores are
+#'   uncalibrated and are not probabilities.
+#' @export
+predict_pathofmpred_object <- function(
+    object, features, patient_id = NULL, id_column = NULL,
+    outcome_type = c("continuous", "binary"), endpoints = NULL,
+    aggregation = NULL, warn_ood = TRUE) {
+  object <- .read_pathofmpred_object(object)
+  x <- as.data.frame(features, check.names = FALSE)
+  if (!nrow(x)) stop("features must contain at least one row.", call. = FALSE)
+  if (!is.null(id_column)) {
+    if (!is.null(patient_id)) {
+      stop("Use either patient_id or id_column, not both.", call. = FALSE)
+    }
+    if (length(id_column) != 1L || !is.character(id_column) ||
+        !id_column %in% names(x)) {
+      stop("id_column must name one column in features.", call. = FALSE)
+    }
+    patient_id <- as.character(x[[id_column]])
+  }
+  if (is.null(patient_id)) {
+    patient_id <- rownames(x)
+    if (is.null(patient_id) || any(!nzchar(patient_id))) {
+      patient_id <- paste0("sample_", seq_len(nrow(x)))
+    }
+  }
+  patient_id <- as.character(patient_id)
+  if (length(patient_id) != nrow(x) || anyNA(patient_id) ||
+      any(!nzchar(patient_id))) {
+    stop("patient_id must contain one non-missing identifier per feature row.",
+         call. = FALSE)
+  }
+  missing_features <- setdiff(object$feature_names, names(x))
+  if (length(missing_features)) {
+    stop("Missing feature columns: ",
+         paste(utils::head(missing_features, 10L), collapse = ", "),
+         if (length(missing_features) > 10L) " ..." else "", call. = FALSE)
+  }
+  X <- as.matrix(x[, object$feature_names, drop = FALSE])
+  storage.mode(X) <- "double"
+  if (any(!is.finite(X))) {
+    stop("All foundation-model feature values must be finite numeric values.",
+         call. = FALSE)
+  }
+  if (is.null(aggregation)) aggregation <- object$data_audit$aggregation %||% "mean"
+  aggregation <- match.arg(aggregation, c("mean", "median"))
+  pooled <- .pathofm_pool_rows(X, patient_id, aggregation)
+  pooled_ids <- rownames(pooled)
+  n_rows <- as.integer(table(factor(patient_id, levels = pooled_ids)))
+
+  outcome_type <- match.arg(outcome_type, c("continuous", "binary"),
+                            several.ok = TRUE)
+  registry <- object$registry
+  registry <- registry[registry$outcome_type %in% outcome_type, , drop = FALSE]
+  if (!is.null(endpoints)) {
+    registry <- registry[registry$endpoint %in% endpoints, , drop = FALSE]
+    absent <- setdiff(endpoints, object$registry$endpoint)
+    if (length(absent)) {
+      stop("Endpoints are not present in object: ",
+           paste(absent, collapse = ", "), ".", call. = FALSE)
+    }
+  }
+  if (!nrow(registry)) stop("No fitted endpoint matched the requested filters.",
+                            call. = FALSE)
+
+  output <- vector("list", nrow(registry))
+  for (i in seq_len(nrow(registry))) {
+    info <- registry[i, , drop = FALSE]
+    artifact <- object$models[[info$model_id[[1L]]]]
+    .validate_runtime(artifact)
+    ood <- rep(NA_real_, nrow(pooled))
+    if (!is.null(artifact$training_feature_min) &&
+        !is.null(artifact$training_feature_max)) {
+      ood <- rowMeans(
+        sweep(pooled, 2L, artifact$training_feature_min, `<`) |
+          sweep(pooled, 2L, artifact$training_feature_max, `>`)
+      )
+      if (isTRUE(warn_ood) && any(ood > 0.05)) {
+        warning(artifact$model_id, ": ", sum(ood > 0.05),
+                " patient(s) have >5% of features outside the training range.",
+                call. = FALSE)
+      }
+    }
+    binary <- identical(artifact$outcome_type, "binary")
+    pred <- stats::predict(artifact$model, pooled, raw_scores = binary)
+    if (binary) {
+      score <- drop(pred$LDA_scores[, 2L, 1L] - pred$LDA_scores[, 1L, 1L])
+      threshold <- artifact$operating_threshold
+      if (is.null(threshold) || !length(threshold) || !is.finite(threshold)) {
+        stop("Binary artifact ", artifact$model_id,
+             " has no finite training-derived operating threshold.", call. = FALSE)
+      }
+      class01 <- as.character(as.integer(score >= threshold))
+      labels <- artifact$class_labels
+      class_label <- if (!is.null(labels) &&
+                          all(c("negative", "positive") %in% names(labels))) {
+        ifelse(class01 == "1", labels$positive, labels$negative)
+      } else class01
+      value <- rep(NA_real_, length(score))
+    } else {
+      value <- if (length(dim(pred$Ypred)) == 3L) {
+        drop(pred$Ypred[, 1L, 1L])
+      } else drop(pred$Ypred)
+      score <- rep(NA_real_, length(value))
+      threshold <- NA_real_
+      class01 <- rep(NA_character_, length(value))
+      class_label <- rep(NA_character_, length(value))
+    }
+    output[[i]] <- data.frame(
+      patient_id = pooled_ids,
+      foundation_model = object$foundation_model,
+      n_feature_rows = n_rows,
+      aggregation = aggregation,
+      model_id = artifact$model_id,
+      endpoint = artifact$endpoint,
+      outcome_type = artifact$outcome_type,
+      prediction = value,
+      lda_score = score,
+      predicted_class = class01,
+      predicted_class_label = class_label,
+      operating_threshold = threshold,
+      score_interpretation = if (binary) {
+        "Uncalibrated discriminant score, not probability"
+      } else {
+        "Prediction in the outcome scale used for model fitting"
+      },
+      training_n = artifact$training_n,
+      training_positive = artifact$training_positive,
+      training_negative = artifact$training_negative,
+      ncomp = artifact$ncomp,
+      ood_fraction = ood,
+      external_validation = "not established",
+      stringsAsFactors = FALSE, check.names = FALSE
+    )
+  }
+  answer <- do.call(rbind, output)
+  rownames(answer) <- NULL
+  class(answer) <- c("pathofm_object_predictions", class(answer))
+  answer
 }
 
 #' Apply the legacy TITAN model interface

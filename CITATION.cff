@@ -1,10 +1,9 @@
 cff-version: 1.2.0
 message: "If you use PathoFMPred, please cite this software and the associated manuscript."
-title: "PathoFMPred: cancer-specific molecular prediction from TITAN embeddings"
+title: "PathoFMPred: cancer-specific prediction from pathology foundation-model representations"
 type: software
-version: 0.1.0
-date-released: 2026-08-16
-license: GPL-3.0
+version: 0.3.0
+license: MIT
 authors:
   - given-names: Aamilah
     family-names: Ismail
@@ -20,6 +19,14 @@ authors:
     family-names: Ojo
   - given-names: Ekene Emmanuel
     family-names: Nweke
+  - given-names: Silvano
+    family-names: Piazza
+  - given-names: Dinesh
+    family-names: Gupta
+  - given-names: Alessia
+    family-names: Vignoli
+  - given-names: Leonardo
+    family-names: Tenori
   - given-names: Stefano
     family-names: Cacciatore
     email: tkcaccia@gmail.com

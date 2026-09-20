@@ -33,6 +33,11 @@ Users may build a TITAN object locally after separately obtaining the TITAN
 features and accepting the upstream access terms. Do not redistribute the
 resulting object unless the TITAN rights holder has provided permission.
 
+The PathoFMPred source code is MIT licensed. Fitted objects, registry data and
+third-party inputs are not covered by that source-code grant. The complete
+asset-specific terms and required attributions are recorded in
+`inst/licenses/MODEL_ACCESS.md`.
+
 All supplied performance estimates are internal research estimates. They do
 not establish external validity, assay equivalence, or clinical utility.
 
@@ -49,7 +54,7 @@ An institutional mirror can be selected without changing package code:
 ```{r mirror, eval=FALSE, purl=FALSE}
 fetch_pathofmpred_models(
   "GigaSSL",
-  base_url = "https://example.org/pathofmpred/models-v1"
+  base_url = "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v2"
 )
 ```
 
@@ -75,10 +80,33 @@ custom_object <- create_pathofmpred_object(
 )
 ```
 
+The fitted collection can then be applied directly without adding it to the
+package's bundled-model registry. Repeated rows in a new feature table are
+pooled with the aggregation rule stored in the object.
+
+```{r predict-generic, eval=FALSE, purl=FALSE}
+new_features <- read.csv("new_foundation_model_features.csv",
+                         check.names = FALSE)
+
+custom_prediction <- predict_pathofmpred_object(
+  object = custom_object,
+  features = new_features,
+  id_column = "patient_id"
+)
+custom_prediction[, c("patient_id", "endpoint", "outcome_type",
+                      "prediction", "predicted_class_label", "lda_score")]
+```
+
+For a binary endpoint, `predicted_class_label` uses the negative and positive
+labels recorded during fitting. `lda_score` is an uncalibrated discriminant
+score and is not a probability.
+
 The function reports feature-only IDs, outcome-only IDs, and missingness for
 every endpoint in `custom_object$data_audit`. Numeric outcomes with two observed
 levels are treated as binary by default. Other numeric outcomes are treated as
-continuous. Types can be fixed explicitly with a named vector.
+continuous. Types can be fixed explicitly with a named vector. Binary outcomes
+encoded as anything other than `0`/`1` or `FALSE`/`TRUE` require an explicit
+event label through `positive_class`.
 
 ```{r settings, eval=FALSE, purl=FALSE}
 settings <- pathofmpred_control(
@@ -94,6 +122,7 @@ settings <- pathofmpred_control(
 custom_object <- create_pathofmpred_object(
   features, outcomes, "patient_id",
   outcome_types = c(APC = "binary", Leukocyte_Fraction = "continuous"),
+  positive_class = c(APC = "mutated"),
   control = settings
 )
 ```
@@ -164,6 +193,12 @@ pathofmpred_titan <- create_pathofmpred_object(
     binary_selection = "AUROC"
   ),
   output_file = "pathofmpred_titan.rds"
+)
+
+titan_prediction <- predict_pathofmpred_object(
+  object = pathofmpred_titan,
+  features = read.csv("new_TITAN_features.csv", check.names = FALSE),
+  id_column = "patient_id"
 )
 ```
 

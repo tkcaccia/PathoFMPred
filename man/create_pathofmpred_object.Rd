@@ -13,6 +13,7 @@ create_pathofmpred_object(
   feature_columns = NULL,
   outcome_columns = NULL,
   outcome_types = NULL,
+  positive_class = NULL,
   control = pathofmpred_control(),
   output_file = NULL
 )
@@ -39,6 +40,11 @@ except `id_column` are considered.}
 \item{outcome_types}{Optional named character vector containing `continuous`
 or `binary`. Otherwise numeric two-level outcomes are binary and other
 numeric outcomes are continuous.}
+
+\item{positive_class}{Event-class label for binary outcomes. Supply either
+one value when fitting a single binary outcome or a named character vector
+keyed by endpoint. Zero/one and FALSE/TRUE outcomes default to one and TRUE;
+all other binary labels require an explicit value.}
 
 \item{control}{Settings created by [pathofmpred_control()].}
 

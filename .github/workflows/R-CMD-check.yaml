@@ -18,6 +18,14 @@ jobs:
         with:
           use-public-rspm: true
       - uses: r-lib/actions/setup-pandoc@v2
+      - name: Install pinned fastPLS
+        run: |
+          install.packages("remotes")
+          remotes::install_github(
+            "tkcaccia/fastPLS@b518f75285c387632c2443a0c0989d75c9dcda48",
+            upgrade = "never"
+          )
+        shell: Rscript {0}
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
@@ -26,4 +34,3 @@ jobs:
         with:
           args: 'c("--no-manual")'
           error-on: '"error"'
-
