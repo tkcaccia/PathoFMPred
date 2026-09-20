@@ -5,6 +5,7 @@
 ^TITANPred\.Rproj$
 ^outputs$
 ^CITATION\.cff$
+^LICENSE\.md$
 ^docs$
 ^examples$
 ^[A-Za-z0-9.]+_[0-9.]+\.tar\.gz$

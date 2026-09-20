@@ -8,7 +8,7 @@ fetch_pathofmpred_models(
   foundation_model = c("GigaSSL", "ProvGigaPath"),
   destination = .pathofm_user_model_dir(),
   base_url = getOption("PathoFMPred.model_base_url",
-    "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v1"),
+    "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v2"),
   overwrite = FALSE,
   quiet = FALSE,
   verify = TRUE

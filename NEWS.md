@@ -1,3 +1,20 @@
+# PathoFMPred 0.3.0
+
+- Relicensed contributor-authored source code under MIT while explicitly
+  separating fitted-model, registry, reference-data and upstream terms.
+- Pinned the required fastPLS 0.3 Git revision for reproducible installation
+  and continuous integration.
+- Runtime checks now enforce the fastPLS version and enforce its Git revision
+  when R records `RemoteSha`; source-archive installations without that
+  optional metadata receive a single provenance warning instead of a false
+  incompatibility error.
+- Added explicit binary event-class mapping to prevent factor-order reversal.
+- Existing downloaded model collections are now checksum-verified when
+  `verify = TRUE`, not only when newly downloaded.
+- Added `predict_pathofmpred_object()` so locally created or access-controlled
+  model collections can be applied without being installed as bundled package
+  data.
+
 # PathoFMPred 0.2.1
 
 - Corrected model selection so every cancer-specific report, prediction table,

@@ -6,7 +6,8 @@ It links feature and outcome tables by an explicit patient identifier, pools
 repeated slide rows at patient level, performs nested cross-validation, and
 fits a final model for each eligible outcome.
 
-The source code is licensed separately from the fitted model collections. The
+The source code is available under the MIT license and is licensed separately
+from the fitted model collections, registry and reference data. The
 public package contains only two small Giga-SSL demonstration models. It does
 not contain TITAN-derived fitted parameters. Full Giga-SSL and Prov-GigaPath
 collections are downloaded only after an explicit user call.
@@ -15,12 +16,26 @@ These models provide internally derived TCGA research estimates. They have not
 been externally validated and are not intended for diagnosis or treatment.
 Binary scores and reference ranks are not probabilities.
 
+See `inst/licenses/MODEL_ACCESS.md` for the CC BY 4.0 terms applied to original
+registry/result material and the separate representation-specific conditions
+for fitted objects. TITAN-derived objects are expressly excluded from the MIT
+and CC BY 4.0 grants.
+
 ## Install
 
 ```r
-remotes::install_github("tkcaccia/fastPLS", upgrade = "never")
+remotes::install_github(
+  "tkcaccia/fastPLS@b518f75285c387632c2443a0c0989d75c9dcda48",
+  upgrade = "never"
+)
 remotes::install_github("tkcaccia/PathoFMPred", dependencies = TRUE)
 ```
+
+PathoFMPred enforces the recorded fastPLS version. It also verifies the Git
+revision when the R installation records `RemoteSha`. Base installation from a
+source archive does not record that optional field; in that case PathoFMPred
+issues one provenance warning per session and continues only when the package
+version matches.
 
 ## Download optional public model collections
 
@@ -61,10 +76,29 @@ object <- create_pathofmpred_object(
   ),
   output_file = "pathofmpred_my_representation.rds"
 )
+
+new_features <- read.csv("new_slide_features.csv", check.names = FALSE)
+prediction <- predict_pathofmpred_object(
+  object = object,
+  features = new_features,
+  id_column = "patient_id"
+)
 ```
 
 `rsvd_oversample` and `rsvd_power` remain `NULL` unless explicitly supplied, so
 the installed fastPLS defaults are used.
+
+For a binary outcome encoded with labels other than `0`/`1` or
+`FALSE`/`TRUE`, define the event class explicitly. This prevents an
+alphabetical factor order from silently reversing the scientific meaning:
+
+```r
+object <- create_pathofmpred_object(
+  features, outcomes, "patient_id",
+  outcome_types = c(KEAP1 = "binary"),
+  positive_class = c(KEAP1 = "mutated")
+)
+```
 
 ## TITAN policy
 
@@ -73,8 +107,9 @@ obtain the official TCGA representations from the gated
 [MahmoodLab/TITAN](https://huggingface.co/MahmoodLab/TITAN) repository and build
 their own object with `create_pathofmpred_object()`. The vignette documents the
 feature conversion and molecular, immune, pathway, aneuploidy, fusion, and MSI
-sources. Locally built TITAN objects should not be redistributed without
-permission from the upstream rights holder.
+sources. The resulting local object can be applied with
+`predict_pathofmpred_object()`. Locally built TITAN objects should not be
+redistributed without permission from the upstream rights holder.
 
 The access-controlled `tkcaccia/PathoFMPred-private` repository contains the
 project's TITAN, Giga-SSL, and Prov-GigaPath reference objects.
