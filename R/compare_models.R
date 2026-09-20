@@ -1,8 +1,8 @@
 #' Compare representation-specific models for one cancer-endpoint task
 #'
-#' Lists every controlled reference object available for the same task and
+#' Lists every fitted reference object available for the same task and
 #' distinguishes object availability from a representation-specific matched-
-#' atlas effect-threshold crossing. The controlled inventory is only a partial
+#' atlas effect-threshold crossing. The fitted-object inventory is only a partial
 #' operationalization of the multi-representation atlas. The function does not
 #' automatically select the largest internal performance estimate or combine
 #' predictions: representation choice must be fixed before external evaluation,
@@ -36,9 +36,9 @@ compare_pathofm_models <- function(cancer, endpoint, outcome_type = NULL,
   all_models <- all_models[all_models$endpoint %in% endpoint, , drop = FALSE]
   if (!nrow(all_models)) {
     stop(paste(
-      "No controlled reference object matches this cancer-endpoint task.",
+      "No fitted reference object matches this cancer-endpoint task.",
       "This does not imply that the task was absent or negative in the matched",
-      "atlas; the controlled inventory does not cover every representation-specific crossing."
+      "atlas; the fitted-object inventory does not cover every representation-specific crossing."
     ),
          call. = FALSE)
   }
@@ -48,7 +48,7 @@ compare_pathofm_models <- function(cancer, endpoint, outcome_type = NULL,
     keep <- !grepl("^exploratory_limited", models$model_evidence_tier)
     if (!any(keep)) {
       stop(paste(
-        "Controlled object(s) exist for this task, but no larger-sample",
+        "Fitted object(s) exist for this task, but no larger-sample",
         "representation-specific model crossed its matched effect threshold.",
         "Re-run with include_limited_evidence = TRUE only to include a",
         "limited-sample model that still crossed the threshold."
@@ -59,7 +59,7 @@ compare_pathofm_models <- function(cancer, endpoint, outcome_type = NULL,
   if (!nrow(models)) {
     stop(
       paste(
-        "Controlled object(s) exist for this task, but none crossed the",
+        "Fitted object(s) exist for this task, but none crossed the",
         "representation-specific matched effect threshold."
       ),
       call. = FALSE
@@ -77,7 +77,7 @@ compare_pathofm_models <- function(cancer, endpoint, outcome_type = NULL,
   models$controlled_object_available <- TRUE
   models$object_availability_class <- paste0(
     length(unique(all_models$foundation_model)),
-    " representation-specific controlled object(s) exist for this task; ",
+    " representation-specific fitted object(s) exist for this task; ",
     "object count is not a consensus count"
   )
   models$resource_completeness <- paste(

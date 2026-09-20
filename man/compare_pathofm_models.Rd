@@ -16,7 +16,7 @@ crossed the representation-specific matched effect threshold.}
 \value{A registry data frame with object-availability, matched-threshold,
 resource-scope and selection-guidance fields.}
 \description{
-Lists controlled reference objects for the same task while distinguishing object
+Lists fitted reference objects for the same task while distinguishing object
 availability from representation-specific matched-atlas effect-threshold crossing.
 The inventory is a partial operationalization of the multi-representation atlas.
 The function does not automatically select the largest internal estimate or combine
