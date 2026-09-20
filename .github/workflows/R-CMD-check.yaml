@@ -20,11 +20,14 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
       - name: Install pinned fastPLS
         run: |
-          install.packages("remotes")
-          remotes::install_github(
-            "tkcaccia/fastPLS@b518f75285c387632c2443a0c0989d75c9dcda48",
-            upgrade = "never"
+          install.packages("float")
+          archive <- tempfile(fileext = ".tar.gz")
+          download.file(
+            "https://codeload.github.com/tkcaccia/fastPLS/tar.gz/b518f75285c387632c2443a0c0989d75c9dcda48",
+            archive,
+            mode = "wb"
           )
+          install.packages(archive, repos = NULL, type = "source")
         shell: Rscript {0}
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
