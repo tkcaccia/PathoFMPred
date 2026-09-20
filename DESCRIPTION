@@ -1,0 +1,41 @@
+Package: PathoFMPred
+Type: Package
+Title: Cancer-Specific Molecular Prediction from Pathology Foundation Models
+Version: 0.3.0
+Authors@R: c(
+    person("Aamilah", "Ismail", role = "aut"),
+    person("Martin", "Ocharo", role = "aut"),
+    person("Moussa", "Kassim", role = "aut", email = "moussa.kassim@icgeb.org"),
+    person("Dalia", "Ahmed", role = "aut", email = "dalia.ahmed@icgeb.org"),
+    person("Brendon", "Price", role = "aut"),
+    person("Dupe", "Ojo", role = "aut", email = "dupe.ojo@icgeb.org"),
+    person("Ekene Emmanuel", "Nweke", role = "aut"),
+    person("Silvano", "Piazza", role = "aut"),
+    person("Dinesh", "Gupta", role = "aut"),
+    person("Stefano", "Cacciatore", role = c("aut", "cre"),
+      email = "tkcaccia@gmail.com")
+  )
+Description: Builds and applies portable cancer-specific partial least-squares
+    regression and PLS-LDA model collections from pathology foundation-model
+    representations. Feature and outcome tables are linked by explicit patient
+    identifiers, repeated slide rows are pooled at patient level, and model
+    development uses nested cross-validation before final fitting. The public
+    package includes only a minimal Giga-SSL example; optional full Giga-SSL
+    and Prov-GigaPath collections are obtained by an explicit user download.
+    TITAN-derived fitted parameters are not distributed publicly. Outputs are
+    research estimates without external-validation or clinical-use claims.
+License: GPL-3
+Encoding: UTF-8
+Depends: R (>= 4.2.0)
+Imports:
+    fastPLS,
+    ggplot2,
+    rmarkdown,
+    stats,
+    utils
+Suggests:
+    knitr,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0

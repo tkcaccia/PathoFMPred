@@ -1,0 +1,196 @@
+---
+title: "PathoFMPred: building and using portable pathology models"
+author: "PathoFMPred authors"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{PathoFMPred: building and using portable pathology models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+# Scope and distribution
+
+PathoFMPred stores many cancer-specific PLS regression and PLS-LDA fits in one
+portable object for each pathology representation. The object contains fitted
+parameters, feature order, development metrics, and provenance. It does not
+contain the original feature or outcome rows.
+
+The public package contains only two small Giga-SSL models as executable
+examples. Full Giga-SSL and Prov-GigaPath collections are optional downloads
+that occur only when a user calls `fetch_pathofmpred_models()`. No model is
+downloaded during installation, package loading, checking, or vignette
+construction.
+
+TITAN-derived fitted parameters are not distributed in the public repository.
+Users may build a TITAN object locally after separately obtaining the TITAN
+features and accepting the upstream access terms. Do not redistribute the
+resulting object unless the TITAN rights holder has provided permission.
+
+All supplied performance estimates are internal research estimates. They do
+not establish external validity, assay equivalence, or clinical utility.
+
+# Install optional public model collections
+
+```{r fetch, eval=FALSE, purl=FALSE}
+library(PathoFMPred)
+fetch_pathofmpred_models(c("GigaSSL", "ProvGigaPath"))
+available_foundation_models()
+```
+
+An institutional mirror can be selected without changing package code:
+
+```{r mirror, eval=FALSE, purl=FALSE}
+fetch_pathofmpred_models(
+  "GigaSSL",
+  base_url = "https://example.org/pathofmpred/models-v1"
+)
+```
+
+# Build a PathoFMPred object from a new representation
+
+The first three arguments are mandatory. Both tables must contain the column
+named by `id_column`. The outcome table must contain unique IDs. The feature
+table may contain repeated IDs, such as several slides from one patient.
+Repeated rows are pooled by patient mean by default or by patient median when
+`aggregation = "median"` is selected. More than 100 unique IDs must match.
+
+```{r build-generic, eval=FALSE, purl=FALSE}
+features <- read.csv("foundation_model_features.csv", check.names = FALSE)
+outcomes <- read.csv("patient_outcomes.csv", check.names = FALSE)
+
+custom_object <- create_pathofmpred_object(
+  feature_table = features,
+  outcome_table = outcomes,
+  id_column = "patient_id",
+  foundation_model = "my_future_representation",
+  aggregation = "mean",
+  output_file = "pathofmpred_my_future_representation.rds"
+)
+```
+
+The function reports feature-only IDs, outcome-only IDs, and missingness for
+every endpoint in `custom_object$data_audit`. Numeric outcomes with two observed
+levels are treated as binary by default. Other numeric outcomes are treated as
+continuous. Types can be fixed explicitly with a named vector.
+
+```{r settings, eval=FALSE, purl=FALSE}
+settings <- pathofmpred_control(
+  components = 1:20,
+  outer_folds = 5,
+  inner_folds = 5,
+  repeats = 5,
+  method = "plssvd",
+  binary_selection = "AUROC",
+  seed = 2026
+)
+
+custom_object <- create_pathofmpred_object(
+  features, outcomes, "patient_id",
+  outcome_types = c(APC = "binary", Leukocyte_Fraction = "continuous"),
+  control = settings
+)
+```
+
+`rsvd_oversample` and `rsvd_power` are `NULL` by default. Therefore,
+PathoFMPred uses the installed fastPLS defaults. They can be overridden through
+`pathofmpred_control()` when a documented analysis requires different values.
+
+# Build the TITAN object locally
+
+The official TITAN TCGA slide representations are provided by the TITAN
+authors in the gated
+[MahmoodLab/TITAN repository](https://huggingface.co/MahmoodLab/TITAN),
+including `TCGA_TITAN_features.pkl`. Access must be requested from the upstream
+repository. The project conversion script is
+`tools/convert_titan_features.py` in the companion analysis repository. It
+creates a CSV whose rows retain TCGA slide identifiers and whose 768 feature
+columns are named consistently.
+
+Outcome tables must be assembled independently. The companion analysis
+repository documents and converts the following sources:
+
+* MC3 mutation calls from Ellrott et al. and cancer-driver annotations from
+  Bailey et al.;
+* PanImmune variables from Thorsson et al., including RNA-deconvolved cell
+  fractions, transcriptomic signatures, methylation-derived leukocyte content,
+  immune-repertoire quantities, in-silico neoantigens, and genomic-context
+  variables;
+* oncogenic pathway alterations from Sanchez-Vega et al.;
+* aneuploidy and genome-doubling variables from Taylor et al.;
+* gene fusions from Gao et al.;
+* MSI fields from the cBioPortal TCGA PanCancer Atlas studies; and
+* RNA pathway scores computed from TCGA expression matrices, including cancer
+  hallmarks, glutathione, and vitamin B6 pathways.
+
+The exact expected filenames and local configuration are recorded in
+[`config/paths.example.R`](https://github.com/tkcaccia/titan-prediction/blob/main/config/paths.example.R).
+The acquisition and conversion workflow is documented in the companion
+[`README`](https://github.com/tkcaccia/titan-prediction). Molecular sources do
+not all link to histology at the same level. Some provide a TCGA sample barcode,
+whereas the PanImmune table links at participant level. A matching sample
+barcode does not prove that the slide and molecular assay came from the same
+block, portion, analyte, or tumour region.
+
+After conversion, a local TITAN collection can be fitted as follows. This code
+is intentionally not executed while the vignette is built.
+
+```{r build-titan, eval=FALSE, purl=FALSE}
+titan_features <- read.csv(
+  "TCGA_TITAN_features.csv", check.names = FALSE
+)
+endpoint_table <- read.csv(
+  "pathofmpred_patient_endpoints.csv", check.names = FALSE
+)
+
+pathofmpred_titan <- create_pathofmpred_object(
+  feature_table = titan_features,
+  outcome_table = endpoint_table,
+  id_column = "patient_id",
+  foundation_model = "TITAN",
+  aggregation = "mean",
+  control = pathofmpred_control(
+    components = 1:20,
+    outer_folds = 5,
+    inner_folds = 5,
+    repeats = 5,
+    method = "plssvd",
+    binary_selection = "AUROC"
+  ),
+  output_file = "pathofmpred_titan.rds"
+)
+```
+
+Keep `pathofmpred_titan.rds` local or in the access-controlled
+`tkcaccia/PathoFMPred-private` repository. It must not be added to the public
+`tkcaccia/PathoFMPred` repository under the current release policy.
+
+# Use the bundled Giga-SSL example
+
+The minimal public fixture contains COAD APC mutation and MANTIS-score models.
+It demonstrates the interface but is not a complete atlas.
+
+```{r example, eval=FALSE, purl=FALSE}
+models <- available_pathofm_models("GigaSSL", cancer = "COAD")
+models[, c("family", "endpoint", "outcome_type", "n")]
+
+x <- example_pathofm_features("COAD", foundation_model = "GigaSSL")
+prediction <- predict_pathofm(
+  cancer = "COAD",
+  features = x,
+  foundation_model = "GigaSSL",
+  patient_id = "software_example"
+)
+prediction[, c("endpoint", "outcome_type", "prediction",
+               "predicted_class", "lda_score")]
+```
+
+Binary scores are uncalibrated discriminant scores, not probabilities. Any
+reference rank is a rank within TCGA repeated out-of-fold predictions, not a
+probability or clinical-risk estimate.

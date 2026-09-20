@@ -1,0 +1,3 @@
+name: Pathology foundation-model sample report
+description: Cancer-specific research predictions from TITAN, Giga-SSL, or Prov-GigaPath features
+create_dir: false
