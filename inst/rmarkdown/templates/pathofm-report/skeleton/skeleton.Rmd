@@ -1,0 +1,348 @@
+---
+title: "Pathology foundation-model research-software demonstration"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+params:
+  predictions: null
+  sample_id: "sample"
+  cancer: "unknown"
+  clinical_context: null
+output:
+  html_document:
+    self_contained: true
+    theme: flatly
+    css: ../resources/report.css
+    toc: true
+    toc_float: true
+    code_folding: hide
+  pdf_document:
+    toc: true
+    number_sections: false
+geometry: margin=0.7in
+fontsize: 10pt
+header-includes:
+  - \usepackage{graphicx}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      fig.align = "center", dpi = 160)
+p <- params$predictions
+stopifnot(
+  "predictable_for_selected_cancer_and_representation" %in% names(p),
+  all(p$predictable_for_selected_cancer_and_representation %in% TRUE)
+)
+foundation_model <- unique(p$foundation_model)
+foundation_model_label <- switch(
+  foundation_model,
+  GigaSSL = "Giga-SSL",
+  ProvGigaPath = "Prov-GigaPath",
+  foundation_model
+)
+continuous <- p[p$outcome_type == "continuous", , drop = FALSE]
+binary <- p[p$outcome_type == "binary", , drop = FALSE]
+site_sensitive <- p[grepl("^site-sensitive", p$site_robustness_status), , drop = FALSE]
+rule_sensitive <- binary[grepl("sensitive to operating rule",
+                               binary$decision_rule_sensitivity_status,
+                               fixed = TRUE), , drop = FALSE]
+limited_evidence <- p[grepl("^exploratory_limited", p$model_evidence_tier), , drop = FALSE]
+ood_max <- max(p$ood_fraction, na.rm = TRUE)
+if (!is.finite(ood_max)) ood_max <- NA_real_
+clinical_context <- params$clinical_context
+glossary <- PathoFMPred:::.endpoint_glossary(p)
+report_table <- function(x, fit_to_page = FALSE) {
+  output_format <- if (knitr::is_html_output()) "html" else "latex"
+  table <- knitr::kable(
+    x, format = output_format, escape = TRUE, row.names = FALSE
+  )
+  if (knitr::is_html_output()) {
+    print(table)
+  } else if (fit_to_page) {
+    cat(
+      "\\begingroup\\small\n\\resizebox{\\linewidth}{!}{%\n",
+      as.character(table),
+      "\n}\n\\endgroup\n\n",
+      sep = ""
+    )
+  } else {
+    cat(as.character(table), "\n\n", sep = "")
+  }
+}
+```
+
+```{r report-header, results='asis'}
+if (knitr::is_html_output()) {
+  cat(sprintf('<div class="hero"><div class="eyebrow">INTERNALLY DERIVED TCGA ESTIMATES</div><h1>%s &middot; %s</h1><p>%s representation; research-software output from supported cancer-specific models in PathoFMPred.</p></div>', params$cancer, params$sample_id, foundation_model_label))
+  cat('<div class="critical-warning"><strong>UNVALIDATED RESEARCH OUTPUT</strong><span><b>Reference rank, not probability</b></span><span>No independent external validation</span><span>Not for diagnosis, treatment selection, or clinical risk estimation</span></div>')
+  cat(sprintf('<div class="cards"><div class="card"><span>Models applied</span><strong>%d</strong></div><div class="card"><span>Continuous</span><strong>%d</strong></div><div class="card"><span>Binary</span><strong>%d</strong></div><div class="card"><span>Slides pooled</span><strong>%d</strong></div></div>', nrow(p), nrow(continuous), nrow(binary), unique(p$n_slides)))
+} else {
+  cat(sprintf("# Research-software output: internally derived TCGA estimates\n\n## %s - %s - %s\n\n", params$cancer, params$sample_id, foundation_model_label))
+  cat("**UNVALIDATED RESEARCH OUTPUT - REFERENCE RANK, NOT PROBABILITY - NO INDEPENDENT EXTERNAL VALIDATION - NOT FOR DIAGNOSIS, TREATMENT SELECTION OR CLINICAL RISK ESTIMATION**\n\n")
+  summary_table <- data.frame(
+    `Models applied` = nrow(p), Continuous = nrow(continuous),
+    Binary = nrow(binary), `Slides pooled` = unique(p$n_slides),
+    check.names = FALSE
+  )
+  report_table(summary_table)
+  cat("\n\n")
+}
+```
+
+This research-software demonstration applies models developed and evaluated only in TCGA. Every displayed value is an **internally derived TCGA estimate**, not external performance evidence or a diagnostic output. Binary LDA scores are uncalibrated. Every displayed **Reference rank, not probability** describes relative position only.
+
+For every cancer and representation, PathoFMPred displays only models that met the recorded representation-specific predictability rule. In the matched three-representation atlas, this means Q2 at least 0.20 for a continuous endpoint or AUROC at least 0.60 for a binary endpoint. TITAN tasks outside the common cohort must pass the supporting permutation/FDR screen. By default, the report also excludes continuous models developed with fewer than 100 labelled participants and binary models with fewer than 50 participants in either class. Explicit opt-in can add only these limited-sample threshold-crossing models. Tested-below-threshold reference objects never enter prediction reports.
+
+```{r limited-evidence-warning, results='asis', eval=nrow(limited_evidence)>0}
+cat("## Exploratory / limited-evidence opt-in warning\n\n")
+cat(sprintf("**This output explicitly includes %d limited-sample model(s) that crossed the representation-specific threshold. They are excluded from default inference and must not be interpreted alongside larger-sample models without this warning.**\n\n", nrow(limited_evidence)))
+d <- limited_evidence[, c("endpoint", "outcome_type", "training_n",
+                          "training_positive", "training_negative",
+                          "limited_evidence_reason")]
+names(d) <- c("Endpoint", "Type", "Total", "Positive", "Negative", "Reason")
+report_table(d, fit_to_page = TRUE)
+cat("\n\n")
+```
+
+```{r site-warning, results='asis', eval=nrow(site_sensitive)>0}
+cat("## Prominent TCGA tissue-source-site-code sensitivity warning\n\n")
+cat(sprintf("**%d model(s) in this output fell below their original documented screening threshold under internal validation grouped by TCGA tissue-source-site code. These calls must not be highlighted without this warning.** The barcode-derived code is not an institution, scanner or laboratory identifier, and this grouping is not external validation.\n\n", nrow(site_sensitive)))
+d <- site_sensitive[, c("endpoint", "outcome_type", "site_grouped_metric_name",
+                        "site_grouped_metric", "site_performance_delta",
+                        "site_robustness_status")]
+d$endpoint <- ifelse(duplicated(d$endpoint) | duplicated(d$endpoint, fromLast = TRUE),
+                     paste0(d$endpoint, " [", site_sensitive$family, "]"), d$endpoint)
+d$endpoint <- paste0(d$endpoint, " (", d$outcome_type, ")")
+d$site_grouped_metric_name <- ifelse(
+  d$site_grouped_metric_name == "AUROC", "AUROC",
+  ifelse(d$site_grouped_metric_name == "balanced accuracy", "BA", "Q2")
+)
+d$site_grouped_metric_name <- sprintf(
+  "%s %.3f", d$site_grouped_metric_name, d$site_grouped_metric
+)
+d$site_performance_delta <- sprintf("%+.3f", d$site_performance_delta)
+d$site_robustness_status <- ifelse(
+  grepl("near chance", d$site_robustness_status),
+  "Near chance or worse", "Below documented screening threshold"
+)
+d <- d[, c("endpoint", "site_grouped_metric_name",
+           "site_performance_delta", "site_robustness_status")]
+names(d) <- c("Endpoint (type)", "TSS-grouped metric",
+              "Grouped minus random", "Warning category")
+report_table(d, fit_to_page = TRUE)
+cat("\n\n")
+```
+
+```{r decision-rule-warning, results='asis', eval=nrow(rule_sensitive)>0}
+cat("## Binary operating-rule sensitivity\n\n")
+cat(sprintf("**%d binary model(s) in this output showed operating-rule sensitivity.** The displayed class uses a threshold learned only from inner out-of-fold training scores after the component count was selected by inner AUROC. Empirical-prior and equal-prior calls are secondary sensitivities. Scores and ranks are not calibrated probabilities.\n\n", nrow(rule_sensitive)))
+d <- rule_sensitive[, c(
+  "endpoint", "primary_screen_balanced_accuracy",
+  "equal_prior_balanced_accuracy", "optimized_balanced_accuracy",
+  "equal_prior_crossing", "optimized_crossing"
+)]
+names(d) <- c("Endpoint", "Historical empirical-prior BA", "Equal-prior BA",
+              "Training-threshold BA", "Equal crossing", "Training-threshold crossing")
+for (field in c("Historical empirical-prior BA", "Equal-prior BA", "Training-threshold BA")) {
+  d[[field]] <- sprintf("%.3f", d[[field]])
+}
+report_table(d, fit_to_page = TRUE)
+cat("\n\n")
+```
+
+```{r clinical-context, results='asis', eval=!is.null(clinical_context)}
+cat("## Case context (not used as model input)\n\n")
+if (length(clinical_context$shared_features))
+  cat("**Shared selection features.** ", clinical_context$shared_features, "\n\n", sep = "")
+if (length(clinical_context$pathology))
+  cat("**Pathology summary.** ", clinical_context$pathology, "\n\n", sep = "")
+if (length(clinical_context$source))
+  cat("**Clinical-context source.** ", clinical_context$source, "\n\n", sep = "")
+cat("The pathology field is descriptive context only; it was not a predictor, training target, or validation outcome for PathoFMPred.\n\n")
+```
+
+```{r continuous-profile, fig.width=8.5, fig.height=8.2, out.width='100%', eval=nrow(continuous)>0}
+PathoFMPred::plot_pathofm_radar(p) +
+  ggplot2::labs(
+    subtitle = "Only endpoints predictable for this cancer and representation are shown."
+  ) +
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(size = 15),
+    plot.subtitle = ggplot2::element_text(size = 9)
+  )
+```
+
+```{r binary, fig.width=8.5, fig.height=max(4, 0.48*nrow(binary)+2), out.width='100%', eval=nrow(binary)>0}
+PathoFMPred::plot_pathofm_binary(p) +
+  ggplot2::labs(
+    subtitle = "Reference rank, not probability. Red points are predicted positive."
+  ) +
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(size = 15),
+    plot.subtitle = ggplot2::element_text(size = 9)
+  )
+```
+
+## Continuous internally derived estimates
+
+```{r continuous-table, results='asis'}
+if (nrow(continuous)) {
+  d <- continuous[order(abs(continuous$reference_percentile - 50), decreasing = TRUE),
+                  c("family", "endpoint", "prediction", "reference_percentile")]
+  names(d) <- c("Family", "Endpoint", "Prediction", "TCGA OOF rank (not probability)")
+  d$Prediction <- formatC(d$Prediction, digits = 4, format = "fg")
+  d$`TCGA OOF rank (not probability)` <-
+    sprintf("%.1f%%", d$`TCGA OOF rank (not probability)`)
+  report_table(d, fit_to_page = TRUE)
+}
+```
+
+```{r continuous-evidence, results='asis'}
+if (nrow(continuous)) {
+  d <- continuous[, c("family", "endpoint", "primary_screen_q2",
+                      "repeated_q2", "repeated_rmse", "repeated_spearman")]
+  duplicate_endpoint <- duplicated(d$endpoint) |
+    duplicated(d$endpoint, fromLast = TRUE)
+  d$endpoint[duplicate_endpoint] <- paste0(
+    d$endpoint[duplicate_endpoint], " [", d$family[duplicate_endpoint], "]"
+  )
+  d <- d[, c("endpoint", "primary_screen_q2", "repeated_q2",
+             "repeated_rmse", "repeated_spearman")]
+  names(d) <- c("Endpoint", "Primary screen Q2", "Five-repeat Q2",
+                "Five-repeat RMSE", "Five-repeat Spearman")
+  for (field in names(d)[-1]) d[[field]] <- sprintf("%.3f", d[[field]])
+  cat("**Internal development evidence. The primary screen and five-repeat estimates use different nested-CV partitions and need not be identical.**\n\n")
+  report_table(d, fit_to_page = TRUE)
+}
+```
+
+## Binary research-model calls
+
+```{r binary-table, results='asis'}
+if (nrow(binary)) {
+  d <- binary[, c("family", "endpoint", "predicted_class", "lda_score",
+                  "operating_threshold", "reference_rank", "training_n", "training_positive",
+                  "training_negative",
+                  "primary_screen_auc", "primary_screen_pr_auc",
+                  "primary_screen_prevalence", "primary_no_skill_pr_auc",
+                  "primary_screen_balanced_accuracy",
+                  "repeated_balanced_accuracy", "repeated_auc",
+                  "repeated_pr_auc", "ppv_tcga_prevalence",
+                  "npv_tcga_prevalence", "model_evidence_tier",
+                  "predictability_rule", "tier")]
+  repeated <- duplicated(d$endpoint) | duplicated(d$endpoint, fromLast = TRUE)
+  d$endpoint[repeated] <- paste0(d$endpoint[repeated], " [", d$family[repeated], "]")
+  d$training_counts <- sprintf(
+    "%d (+%d/-%d)", d$training_n, d$training_positive, d$training_negative
+  )
+  calls <- d[, c("endpoint", "predicted_class", "lda_score", "operating_threshold",
+                 "reference_rank", "training_counts")]
+  names(calls) <- c("Endpoint", "Class", "LDA score", "Threshold",
+                    "Rank, not probability", "Training n (+/-)")
+  calls$`LDA score` <- formatC(calls$`LDA score`, digits = 4, format = "fg")
+  calls$Threshold <- formatC(calls$Threshold, digits = 4, format = "fg")
+  calls$`Rank, not probability` <-
+    sprintf("%.1f%%", calls$`Rank, not probability`)
+  cat("**Calls and development denominators.**\n\n")
+  report_table(calls, fit_to_page = TRUE)
+  cat("\n\n**Internal development evidence. Primary AUROC and PR-AUC use nested held-out scores. The no-skill PR-AUC reference equals prevalence. Operating metrics and predictive values use training-derived thresholds.**\n\n")
+  performance <- d[, c(
+    "endpoint", "primary_screen_auc", "primary_screen_pr_auc",
+    "primary_screen_prevalence", "primary_no_skill_pr_auc",
+    "primary_screen_balanced_accuracy"
+  )]
+  names(performance) <- c("Endpoint", "AUROC", "PR-AUC",
+                          "Prevalence", "No-skill PR-AUC", "Threshold BA")
+  for (field in c("Primary AUROC", "Primary PR-AUC", "Prevalence",
+                  "No-skill PR-AUC", "Training-threshold BA")) {
+    short_field <- switch(field,
+                          `Primary AUROC` = "AUROC",
+                          `Primary PR-AUC` = "PR-AUC",
+                          `Training-threshold BA` = "Threshold BA",
+                          field)
+    performance[[short_field]] <- sprintf("%.3f", performance[[short_field]])
+  }
+  report_table(performance, fit_to_page = TRUE)
+  cat("\n\n**Cohort-specific predictive values.**\n\n")
+  predictive_values <- d[, c(
+    "endpoint", "ppv_tcga_prevalence", "npv_tcga_prevalence",
+    "model_evidence_tier"
+  )]
+  names(predictive_values) <- c("Endpoint", "PPV", "NPV", "Sample-size stratum")
+  predictive_values$PPV <- sprintf("%.3f", predictive_values$PPV)
+  predictive_values$NPV <- sprintf("%.3f", predictive_values$NPV)
+  predictive_values$`Sample-size stratum` <- ifelse(
+    grepl("exploratory_limited", predictive_values$`Sample-size stratum`),
+    "Limited sample size", "Larger-sample stratum"
+  )
+  report_table(predictive_values, fit_to_page = TRUE)
+}
+```
+
+## Binary development reliability
+
+```{r binary-reliability-table, results='asis'}
+if (nrow(binary)) {
+  d <- binary[, c(
+    "family", "endpoint", "binary_minimum_outer_test_positive",
+    "binary_minimum_outer_test_negative",
+    "binary_minimum_inner_training_positive",
+    "binary_minimum_inner_training_negative",
+    "binary_selected_components_median",
+    "binary_selected_components_minimum",
+    "binary_selected_components_maximum",
+    "binary_repeat_score_spearman", "binary_repeat_class_agreement"
+  )]
+  repeated <- duplicated(d$endpoint) | duplicated(d$endpoint, fromLast = TRUE)
+  d$endpoint[repeated] <- paste0(d$endpoint[repeated], " [", d$family[repeated], "]")
+  d$components <- sprintf(
+    "%.1f (%d-%d)", d$binary_selected_components_median,
+    d$binary_selected_components_minimum,
+    d$binary_selected_components_maximum
+  )
+  d$outer_test_counts <- sprintf(
+    "+%d / -%d", d$binary_minimum_outer_test_positive,
+    d$binary_minimum_outer_test_negative
+  )
+  d$inner_training_counts <- sprintf(
+    "+%d / -%d", d$binary_minimum_inner_training_positive,
+    d$binary_minimum_inner_training_negative
+  )
+  counts <- d[, c("endpoint", "outer_test_counts",
+                  "inner_training_counts", "components")]
+  names(counts) <- c("Endpoint", "Minimum outer test (+/-)",
+                     "Minimum inner training (+/-)",
+                     "Components: median (range)")
+  cat("**Fold class counts and component selection.**\n\n")
+  report_table(counts, fit_to_page = TRUE)
+  cat("\n\n**Repeat-to-repeat held-out prediction stability.**\n\n")
+  stability <- d[, c("endpoint", "binary_repeat_score_spearman",
+                     "binary_repeat_class_agreement")]
+  names(stability) <- c("Endpoint", "Score Spearman rho", "Class agreement")
+  stability$`Score Spearman rho` <- sprintf("%.3f", stability$`Score Spearman rho`)
+  stability$`Class agreement` <- sprintf("%.3f", stability$`Class agreement`)
+  report_table(stability)
+}
+```
+
+## Quality and provenance
+
+- Patient-level aggregation: arithmetic mean across all supplied slide vectors.
+- Maximum fraction outside endpoint-specific TCGA training ranges: `r ifelse(is.na(ood_max), "not available", sprintf("%.1f%%", 100*ood_max))`.
+- Foundation-model input schema: model-specific named features validated against the fitted artifact.
+- Decomposition: seeded rSVD in fastPLS; binary classification: PLS-LDA.
+- TCGA tissue-source-site-code metadata: every row includes the grouped internal metric, random-minus-grouped change, analysed-code count, threshold-retention status, fold-size range and inner-code-separation audit.
+- Binary reliability metadata: held-out average precision, cohort-specific PPV/NPV, outer and inner class-count minima, selected-component distribution and repeat-to-repeat prediction stability.
+- Default model selection: binary models require at least 50 TCGA participants in each class; smaller-class models are available only by explicit opt-in.
+- Scope: internal validation grouped by TCGA tissue-source-site code is not institutional or scanner-level external validation.
+- Intended use: research-software demonstration only; TCGA benchmark without independent external validation.
+
+## Endpoint interpretation and target sources
+
+For continuous endpoints, the TCGA OOF prediction percentile (not probability) locates the prediction within repeated TCGA out-of-fold predictions and is not a clinical reference interval. For binary endpoints, every Reference rank, not probability value is the relative position of an uncalibrated LDA score. It is not confidence or a clinical-risk estimate. PR-AUC is non-interpolated average precision for positive class 1. PPV and NPV are held-out estimates at the observed endpoint prevalence in this TCGA analysis and will change when prevalence changes. Rows marked exploratory/limited evidence are excluded from default inference and require explicit opt-in.
+
+```{r endpoint-glossary, results='asis'}
+for (i in seq_len(nrow(glossary))) {
+  cat("- **", glossary$label[i], ".** ", glossary$meaning[i],
+      " *Analysed scale:* ", glossary$scale[i],
+      " *Model-target source:* ", glossary$source[i], "\n\n", sep = "")
+}
+```

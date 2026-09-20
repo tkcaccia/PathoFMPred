@@ -1,0 +1,11 @@
+^\.git$
+^\.github$
+^tools$
+^README\.Rmd$
+^TITANPred\.Rproj$
+^outputs$
+^CITATION\.cff$
+^docs$
+^examples$
+^[A-Za-z0-9.]+_[0-9.]+\.tar\.gz$
+^[A-Za-z0-9.]+\.Rcheck$
