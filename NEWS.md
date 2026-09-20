@@ -4,6 +4,10 @@
   separating fitted-model, registry, reference-data and upstream terms.
 - Pinned the required fastPLS 0.3 Git revision for reproducible installation
   and continuous integration.
+- Runtime checks now enforce the fastPLS version and enforce its Git revision
+  when R records `RemoteSha`; source-archive installations without that
+  optional metadata receive a single provenance warning instead of a false
+  incompatibility error.
 - Added explicit binary event-class mapping to prevent factor-order reversal.
 - Existing downloaded model collections are now checksum-verified when
   `verify = TRUE`, not only when newly downloaded.
