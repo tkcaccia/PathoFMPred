@@ -41,6 +41,12 @@ asset-specific terms and required attributions are recorded in
 All supplied performance estimates are internal research estimates. They do
 not establish external validity, assay equivalence, or clinical utility.
 
+PathoFMPred enforces the fastPLS version recorded in each fitted object. When
+the R installation records the optional `RemoteSha` field, the exact Git
+revision is also enforced. Base installation from an immutable source archive
+does not populate `RemoteSha`; PathoFMPred then issues one provenance warning
+per session and proceeds only if the recorded package version matches.
+
 # Install optional public model collections
 
 ```{r fetch, eval=FALSE, purl=FALSE}

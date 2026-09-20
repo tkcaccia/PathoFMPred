@@ -35,6 +35,39 @@ test_that("minimal GigaSSL example predicts one binary and one continuous target
   expect_match(binary$rank_interpretation, "not probability", fixed = TRUE)
 })
 
+test_that("runtime validation separates required version from optional Git metadata", {
+  validator <- getFromNamespace(".validate_runtime", "PathoFMPred")
+  state <- getFromNamespace(".pathofmpred_runtime_state", "PathoFMPred")
+  expect_error(
+    validator(list(
+      model_id = "runtime_fixture", fastPLS_version = "0.0.0",
+      fastPLS_remote_sha = character()
+    )),
+    "requires fastPLS 0.0.0"
+  )
+
+  expected_sha <- "b518f75285c387632c2443a0c0989d75c9dcda48"
+  artifact <- list(
+    model_id = "runtime_fixture",
+    fastPLS_version = as.character(utils::packageVersion("fastPLS")),
+    fastPLS_remote_sha = expected_sha
+  )
+  installed_sha <- as.character(
+    utils::packageDescription("fastPLS")$RemoteSha
+  )
+  if (length(installed_sha) && !is.na(installed_sha) && nzchar(installed_sha)) {
+    if (identical(installed_sha, expected_sha)) {
+      expect_silent(validator(artifact))
+    } else {
+      expect_error(validator(artifact), "requires fastPLS Git revision")
+    }
+  } else {
+    state$missing_sha_warned <- FALSE
+    expect_warning(validator(artifact), "cannot verify the recorded Git revision")
+    expect_silent(validator(artifact))
+  }
+})
+
 test_that("builder enforces ID rules, pools repeats, and reports missingness", {
   set.seed(14)
   ids <- sprintf("patient_%03d", seq_len(112L))

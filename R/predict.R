@@ -1,3 +1,5 @@
+.pathofmpred_runtime_state <- new.env(parent = emptyenv())
+
 .validate_runtime <- function(artifact) {
   installed <- as.character(utils::packageVersion("fastPLS"))
   required <- as.character(artifact$fastPLS_version)
@@ -7,16 +9,28 @@
   }
   required_sha <- as.character(artifact$fastPLS_remote_sha)
   installed_sha <- as.character(utils::packageDescription("fastPLS")$RemoteSha)
-  if (length(required_sha) && !is.na(required_sha) && nzchar(required_sha) &&
-      (!length(installed_sha) || is.na(installed_sha) ||
-       !identical(installed_sha, required_sha))) {
+  sha_required <- length(required_sha) && !is.na(required_sha) &&
+    nzchar(required_sha)
+  sha_available <- length(installed_sha) && !is.na(installed_sha) &&
+    nzchar(installed_sha)
+  if (sha_required && sha_available &&
+      !identical(installed_sha, required_sha)) {
     stop(
       "Model ", artifact$model_id, " requires fastPLS Git revision ",
-      required_sha, "; the installed package reports ",
-      if (length(installed_sha) && !is.na(installed_sha) && nzchar(installed_sha))
-        installed_sha else "no RemoteSha",
+      required_sha, "; the installed package reports ", installed_sha,
       ". Reinstall the recorded Git revision before inference.", call. = FALSE
     )
+  }
+  if (sha_required && !sha_available &&
+      !isTRUE(.pathofmpred_runtime_state$missing_sha_warned)) {
+    warning(
+      "The installed fastPLS package reports no RemoteSha, so PathoFMPred ",
+      "cannot verify the recorded Git revision ", required_sha,
+      ". The required fastPLS version matches and inference will continue. ",
+      "For full provenance, install the recorded revision with an installer ",
+      "that preserves RemoteSha metadata.", call. = FALSE
+    )
+    .pathofmpred_runtime_state$missing_sha_warned <- TRUE
   }
 }
 
