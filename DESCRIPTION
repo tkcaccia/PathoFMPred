@@ -28,6 +28,7 @@ License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.2.0)
 Imports:
+    digest,
     fastPLS,
     ggplot2,
     rmarkdown,

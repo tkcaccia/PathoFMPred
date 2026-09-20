@@ -101,7 +101,8 @@ test_that("public fetch excludes TITAN and validates downloaded objects", {
             overwrite = TRUE)
   path <- fetch_pathofmpred_models(
     "GigaSSL", destination = destination,
-    base_url = paste0("file://", mirror), overwrite = TRUE, quiet = TRUE
+    base_url = paste0("file://", mirror), overwrite = TRUE, quiet = TRUE,
+    verify = FALSE
   )
   expect_true(file.exists(path[["GigaSSL"]]))
   expect_true(validate_pathofmpred_object(readRDS(path[["GigaSSL"]])))

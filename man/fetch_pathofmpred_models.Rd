@@ -10,7 +10,8 @@ fetch_pathofmpred_models(
   base_url = getOption("PathoFMPred.model_base_url",
     "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v1"),
   overwrite = FALSE,
-  quiet = FALSE
+  quiet = FALSE,
+  verify = TRUE
 )
 }
 \arguments{
@@ -24,6 +25,8 @@ may point this at an institutional mirror.}
 \item{overwrite}{Replace an existing file.}
 
 \item{quiet}{Passed to [utils::download.file()].}
+
+\item{verify}{Verify the published SHA-256 digest before accepting a file.}
 }
 \value{
 Named paths to the downloaded model collections.
