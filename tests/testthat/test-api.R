@@ -35,6 +35,39 @@ test_that("minimal GigaSSL example predicts one binary and one continuous target
   expect_match(binary$rank_interpretation, "not probability", fixed = TRUE)
 })
 
+test_that("runtime validation separates required version from optional Git metadata", {
+  validator <- getFromNamespace(".validate_runtime", "PathoFMPred")
+  state <- getFromNamespace(".pathofmpred_runtime_state", "PathoFMPred")
+  expect_error(
+    validator(list(
+      model_id = "runtime_fixture", fastPLS_version = "0.0.0",
+      fastPLS_remote_sha = character()
+    )),
+    "requires fastPLS 0.0.0"
+  )
+
+  expected_sha <- "b518f75285c387632c2443a0c0989d75c9dcda48"
+  artifact <- list(
+    model_id = "runtime_fixture",
+    fastPLS_version = as.character(utils::packageVersion("fastPLS")),
+    fastPLS_remote_sha = expected_sha
+  )
+  installed_sha <- as.character(
+    utils::packageDescription("fastPLS")$RemoteSha
+  )
+  if (length(installed_sha) && !is.na(installed_sha) && nzchar(installed_sha)) {
+    if (identical(installed_sha, expected_sha)) {
+      expect_silent(validator(artifact))
+    } else {
+      expect_error(validator(artifact), "requires fastPLS Git revision")
+    }
+  } else {
+    state$missing_sha_warned <- FALSE
+    expect_warning(validator(artifact), "cannot verify the recorded Git revision")
+    expect_silent(validator(artifact))
+  }
+})
+
 test_that("builder enforces ID rules, pools repeats, and reports missingness", {
   set.seed(14)
   ids <- sprintf("patient_%03d", seq_len(112L))
@@ -89,6 +122,63 @@ test_that("builder enforces ID rules, pools repeats, and reports missingness", {
   )
 })
 
+test_that("builder requires and preserves the binary event-class meaning", {
+  set.seed(29)
+  ids <- sprintf("patient_%03d", seq_len(112L))
+  features <- data.frame(
+    patient_id = ids,
+    feature_1 = stats::rnorm(112L),
+    feature_2 = stats::rnorm(112L)
+  )
+  outcomes <- data.frame(
+    patient_id = ids,
+    status = ifelse(features$feature_1 > 0, "mutated", "wild-type")
+  )
+  settings <- pathofmpred_control(
+    components = 1:2, outer_folds = 3, inner_folds = 3,
+    repeats = 1, method = "simpls", seed = 6
+  )
+  expect_error(
+    create_pathofmpred_object(
+      features, outcomes, "patient_id", outcome_types = c(status = "binary"),
+      control = settings
+    ),
+    "positive_class"
+  )
+  object <- suppressMessages(create_pathofmpred_object(
+    features, outcomes, "patient_id", outcome_types = c(status = "binary"),
+    positive_class = c(status = "mutated"), control = settings
+  ))
+  artifact <- object$models[[1L]]
+  expect_identical(artifact$class_labels$positive, "mutated")
+  expect_identical(artifact$class_labels$negative, "wild-type")
+  expect_identical(object$registry$positive_label, "mutated")
+
+  new_features <- data.frame(
+    patient_id = rep(c("new_a", "new_b"), each = 2L),
+    feature_1 = c(-1.0, -0.8, 1.0, 0.8),
+    feature_2 = c(0.1, 0.2, -0.1, -0.2)
+  )
+  prediction <- suppressWarnings(predict_pathofmpred_object(
+    object, new_features, id_column = "patient_id"
+  ))
+  expect_s3_class(prediction, "pathofm_object_predictions")
+  expect_equal(nrow(prediction), 2L)
+  expect_equal(prediction$n_feature_rows, c(2L, 2L))
+  expect_true(all(prediction$predicted_class_label %in%
+                    c("mutated", "wild-type")))
+  expect_true(all(grepl("not probability", prediction$score_interpretation,
+                        fixed = TRUE)))
+
+  path <- tempfile(fileext = ".rds")
+  saveRDS(object, path)
+  prediction_from_file <- suppressWarnings(predict_pathofmpred_object(
+    path, new_features, id_column = "patient_id", endpoints = "status"
+  ))
+  expect_equal(prediction_from_file$predicted_class_label,
+               prediction$predicted_class_label)
+})
+
 test_that("public fetch excludes TITAN and validates downloaded objects", {
   expect_error(fetch_pathofmpred_models("TITAN"), "arg")
   source <- system.file(
@@ -106,4 +196,14 @@ test_that("public fetch excludes TITAN and validates downloaded objects", {
   )
   expect_true(file.exists(path[["GigaSSL"]]))
   expect_true(validate_pathofmpred_object(readRDS(path[["GigaSSL"]])))
+
+  writeBin(as.raw(1:8), path[["GigaSSL"]])
+  expect_error(
+    fetch_pathofmpred_models(
+      "GigaSSL", destination = destination,
+      base_url = paste0("file://", mirror), overwrite = FALSE, quiet = TRUE,
+      verify = TRUE
+    ),
+    "SHA-256 verification failed"
+  )
 })
