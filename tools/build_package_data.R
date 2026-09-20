@@ -118,7 +118,10 @@ registry <- merge(
   by = c("family", "cancer_type", "endpoint"), all.x = TRUE
 )
 registry[, file := basename(file)]
-registry[, redistribution_status := "access-controlled private artifact; no public release claimed"]
+registry[, redistribution_status := paste(
+  "private TITAN-derived artifact; public redistribution prohibited unless",
+  "the TITAN rights holder grants written permission"
+)]
 limited <- registry$model_evidence_tier %in% c(
   "exploratory_limited_evidence",
   "exploratory_limited_continuous_evidence"
@@ -133,14 +136,6 @@ if (anyNA(registry$default_inference) || !any(registry$default_inference) ||
 setorder(registry, cancer_type, outcome_type, family, endpoint)
 registry[, source_file := file]
 registry[, package_file := paste0("m_", substr(sha256, 1L, 24L), ".rds")]
-model_source <- file.path(source_root, "models", registry$source_file)
-model_destination <- file.path(package_root, "inst", "models", "TITAN", registry$package_file)
-if (!all(file.exists(model_source))) stop("One or more registered model files are missing")
-dir.create(file.path(package_root, "inst", "models", "TITAN"), recursive = TRUE,
-           showWarnings = FALSE)
-copied <- file.copy(model_source, model_destination, overwrite = TRUE,
-                    copy.mode = TRUE, copy.date = TRUE)
-if (!all(copied)) stop("Failed to synchronize one or more model artifacts")
 registry[, file := package_file]
 registry[, c("source_file", "package_file") := NULL]
 
@@ -167,18 +162,6 @@ if (file.exists(addition_registry_path)) {
   additions[, source_file := file]
   additions[, package_file := paste0("m_", substr(sha256, 1L, 24L), ".rds")]
   registry <- rbindlist(list(registry, additions), use.names = TRUE, fill = TRUE)
-  addition_source <- file.path(source_root, "models", "foundation_models", additions$source_file)
-  addition_destination <- file.path(
-    package_root, "inst", "models", additions$foundation_model, additions$package_file
-  )
-  if (!all(file.exists(addition_source))) stop("One or more multi-model artifacts are missing")
-  for (model in unique(additions$foundation_model)) {
-    dir.create(file.path(package_root, "inst", "models", model), recursive = TRUE,
-               showWarnings = FALSE)
-  }
-  copied <- file.copy(addition_source, addition_destination, overwrite = TRUE,
-                      copy.mode = TRUE, copy.date = TRUE)
-  if (!all(copied)) stop("Failed to synchronize one or more multi-model artifacts")
   registry[foundation_model != "TITAN", file := package_file]
   registry[, c("source_file", "package_file") := NULL]
   addition_reference <- readRDS(file.path(
@@ -189,32 +172,21 @@ if (file.exists(addition_registry_path)) {
 
 setorder(registry, foundation_model, cancer_type, outcome_type, family, endpoint)
 
-# Keep the installed artifact inventory exactly synchronized with the registry.
-# Candidate membership can change after a refreshed permutation screen, so
-# overwrite-only copying would otherwise leave unregistered stale objects in
-# the private package. Cleanup is restricted to the three explicit model
-# subdirectories and to unreferenced .rds files.
-removed_stale_models <- 0L
+# This is the public-package builder. Full fitted collections must never be
+# copied into the package tree. Giga-SSL and Prov-GigaPath collections are
+# separate, user-invoked downloads; TITAN objects remain private. Fail closed
+# if a maintainer accidentally leaves any full object in a representation
+# subdirectory. The tiny root-level Giga-SSL fixture is intentionally retained.
 for (model in c("TITAN", "GigaSSL", "ProvGigaPath")) {
   model_dir <- file.path(package_root, "inst", "models", model)
-  dir.create(model_dir, recursive = TRUE, showWarnings = FALSE)
-  expected_files <- registry[foundation_model == model, unique(file)]
   existing_files <- list.files(
     model_dir, pattern = "[.]rds$", full.names = TRUE
   )
-  stale_files <- existing_files[!basename(existing_files) %chin% expected_files]
-  if (length(stale_files)) {
-    removed <- unlink(stale_files)
-    if (any(removed != 0L)) {
-      stop("Failed to remove one or more stale package model artifacts for ", model)
-    }
-    removed_stale_models <- removed_stale_models + length(stale_files)
-  }
-  synchronized_files <- list.files(
-    model_dir, pattern = "[.]rds$", full.names = FALSE
-  )
-  if (!setequal(synchronized_files, expected_files)) {
-    stop("Package model directory is not synchronized with registry for ", model)
+  if (length(existing_files)) {
+    stop(
+      "Public package tree contains fitted ", model,
+      " object(s). Remove them and use the post-install download mechanism."
+    )
   }
 }
 
@@ -239,4 +211,3 @@ saveRDS(reference_list, file.path(package_root, "inst", "extdata", "prediction_r
 cat("Registry rows:", nrow(registry), "\n")
 cat("Reference models:", length(reference_list), "\n")
 cat("Reference values:", nrow(reference), "\n")
-cat("Stale model artifacts removed:", removed_stale_models, "\n")
