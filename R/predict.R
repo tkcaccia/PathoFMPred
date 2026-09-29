@@ -7,6 +7,16 @@
     stop("Model ", artifact$model_id, " requires fastPLS ", required,
          "; installed version is ", installed, ".", call. = FALSE)
   }
+  required_repository <- as.character(artifact$fastPLS_repository)
+  installed_repository <- as.character(utils::packageDescription("fastPLS")$Repository)
+  if (length(required_repository) && !is.na(required_repository) &&
+      nzchar(required_repository) &&
+      !identical(installed_repository, required_repository)) {
+    stop("Model ", artifact$model_id, " requires fastPLS from ",
+         required_repository, "; installed source is ",
+         if (length(installed_repository)) installed_repository else "unknown",
+         ".", call. = FALSE)
+  }
   required_sha <- as.character(artifact$fastPLS_remote_sha)
   installed_sha <- as.character(utils::packageDescription("fastPLS")$RemoteSha)
   sha_required <- length(required_sha) && !is.na(required_sha) &&

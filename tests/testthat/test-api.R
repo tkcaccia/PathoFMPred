@@ -45,6 +45,15 @@ test_that("runtime validation separates required version from optional Git metad
     )),
     "requires fastPLS 0.0.0"
   )
+  expect_error(
+    validator(list(
+      model_id = "runtime_fixture",
+      fastPLS_version = as.character(utils::packageVersion("fastPLS")),
+      fastPLS_repository = "not-the-installed-source",
+      fastPLS_remote_sha = NA_character_
+    )),
+    "requires fastPLS from"
+  )
 
   expected_sha <- "b518f75285c387632c2443a0c0989d75c9dcda48"
   artifact <- list(
@@ -100,6 +109,9 @@ test_that("builder enforces ID rules, pools repeats, and reports missingness", {
   expect_equal(object$data_audit$matching_ids, 112L)
   expect_equal(object$data_audit$unmatched_feature_ids, "feature_only")
   expect_equal(object$data_audit$unmatched_outcome_ids, "outcome_only")
+  expect_equal(object$data_audit$input_outcome_rows, 113L)
+  expect_equal(object$data_audit$outcome_rows, 112L)
+  expect_true(all(object$data_audit$input_outcome_missingness$missing == 1L))
   expect_true(all(object$data_audit$outcome_missingness$missing == 0L))
   expect_true(all(vapply(object$models, function(x) {
     !is.null(x$nested_cv) && inherits(x$model, "fastPLS")
@@ -119,6 +131,14 @@ test_that("builder enforces ID rules, pools repeats, and reports missingness", {
       "patient_id", control = settings
     ),
     "more than 100"
+  )
+  duplicate_feature_name <- features
+  names(duplicate_feature_name)[3L] <- "feature_1"
+  expect_error(
+    create_pathofmpred_object(
+      duplicate_feature_name, outcomes, "patient_id", control = settings
+    ),
+    "unique column names"
   )
 })
 

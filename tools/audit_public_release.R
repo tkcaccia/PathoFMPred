@@ -33,6 +33,36 @@ if (any(grepl("titan", basename(relative_rds), ignore.case = TRUE))) {
   stop("Public source tree must not contain a TITAN fitted object")
 }
 
+# Git tracking alone is insufficient: an ignored or untracked object anywhere
+# under inst/ would still be bundled by R CMD build. This includes prediction
+# reference distributions, not only fitted coefficients.
+physical_rds <- list.files(
+  file.path(root, "inst"), pattern = "[.]rds$",
+  recursive = TRUE, full.names = TRUE
+)
+physical_relative <- substring(physical_rds, nchar(root) + 2L)
+if (!setequal(physical_relative, allowed_embedded)) {
+  stop("Public inst/ contains an unexpected RDS object: ",
+       paste(setdiff(physical_relative, allowed_embedded), collapse = ", "))
+}
+
+example_path <- file.path(root, allowed_embedded)
+if (!file.exists(example_path)) {
+  stop("The minimal Giga-SSL example collection is missing")
+}
+example <- readRDS(example_path)
+if (!identical(example$foundation_model, "GigaSSL") ||
+    length(example$feature_names) != 512L ||
+    length(example$models) != 2L ||
+    nrow(example$registry) != 2L ||
+    any(example$registry$foundation_model != "GigaSSL") ||
+    any(!startsWith(names(example$models), "GigaSSL__")) ||
+    any(vapply(example$models, function(model) {
+      !identical(model$foundation_model, "GigaSSL")
+    }, logical(1)))) {
+  stop("The embedded public example does not contain exactly two Giga-SSL models")
+}
+
 builder <- paste(readLines(file.path(root, "tools", "build_package_data.R"),
                            warn = FALSE), collapse = "\n")
 forbidden_builder_patterns <- c(
@@ -53,8 +83,8 @@ store <- paste(readLines(file.path(root, "R", "object_store.R"), warn = FALSE),
                collapse = "\n")
 required_store_text <- c(
   "TITAN-derived fitted parameters are deliberately unavailable",
-  "GigaSSL = \"3ccfb101a24cc1ac9c6564d42c3392a0a139ccddd052cefb326db47d1d54ae1c\"",
-  "ProvGigaPath = \"712b39f122f5efddc8d182700d84f47314943870de42f5596aa4bec6daeb67c8\""
+  "GigaSSL = \"874b84cb040d7c955b96f95b29ee181c9056f5e40a3feda28171f942063d0745\"",
+  "ProvGigaPath = \"72868d9fb7562f3eafaf7cc287cb4e909e1767587662be07625c985a028da832\""
 )
 for (text in required_store_text) {
   if (!grepl(text, store, fixed = TRUE)) {

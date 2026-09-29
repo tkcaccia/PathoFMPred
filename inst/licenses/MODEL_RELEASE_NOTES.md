@@ -1,12 +1,15 @@
-# PathoFMPred optional model collections v2
+# PathoFMPred optional model collections v3
 
 This release contains the full Giga-SSL and Prov-GigaPath PathoFMPred fitted
 model collections for explicit post-install download:
 
-* `pathofmpred_gigassl.rds`
-  SHA-256 `3ccfb101a24cc1ac9c6564d42c3392a0a139ccddd052cefb326db47d1d54ae1c`
-* `pathofmpred_provgigapath.rds`
-  SHA-256 `712b39f122f5efddc8d182700d84f47314943870de42f5596aa4bec6daeb67c8`
+* `pathofmpred_gigassl.rds`, 795 fitted models
+  SHA-256 `874b84cb040d7c955b96f95b29ee181c9056f5e40a3feda28171f942063d0745`
+* `pathofmpred_provgigapath.rds`, 795 fitted models
+  SHA-256 `72868d9fb7562f3eafaf7cc287cb4e909e1767587662be07625c985a028da832`
+
+Both collections were rebuilt with the CRAN fastPLS 0.3 source release and
+the documented 1 to 20 component analysis settings.
 
 These assets are distributed separately from the MIT-licensed PathoFMPred
 source code. To the extent that the PathoFMPred authors hold rights in the

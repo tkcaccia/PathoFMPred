@@ -1,7 +1,9 @@
 Package: PathoFMPred
 Type: Package
-Title: Cancer-Specific Molecular Prediction from Pathology Foundation Models
-Version: 0.3.0
+Title: Tumour Feature Models from Pathology Representations
+Version: 0.4.0
+URL: https://github.com/tkcaccia/PathoFMPred
+BugReports: https://github.com/tkcaccia/PathoFMPred/issues
 Authors@R: c(
     person("Aamilah", "Ismail", role = "aut"),
     person("Martin", "Ocharo", role = "aut"),
@@ -30,7 +32,7 @@ Description: Builds and applies portable cancer-specific partial least-squares
     research estimates without external-validation or clinical-use claims.
 License: MIT + file LICENSE
 Encoding: UTF-8
-Depends: R (>= 4.2.0)
+Depends: R (>= 4.6.0)
 Imports:
     digest,
     fastPLS (>= 0.3),

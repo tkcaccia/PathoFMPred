@@ -30,9 +30,16 @@ under Apache-2.0 at <https://github.com/prov-gigapath/prov-gigapath>, and the
 marked CC BY 4.0 at
 <https://huggingface.co/datasets/seandavis/tcga_provgigapath_embeddings>.
 The upstream notices and citations remain applicable.
+The upstream Prov-GigaPath model page may require gated access and states
+research-use conditions. Distribution of the downstream PathoFMPred
+coefficients does not grant access to the upstream encoder or permission for
+clinical or commercial deployment; users must review and comply with the
+current upstream model terms separately.
 
 The public repository does not contain a TITAN fitted-model collection and its
-download function does not offer one.
+download function does not offer one. It also does not bundle TITAN-derived
+prediction-reference distributions; reference distributions for permitted
+representations accompany their own downloadable collections.
 
 ## Access-controlled repository
 

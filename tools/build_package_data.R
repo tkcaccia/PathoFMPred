@@ -1,6 +1,6 @@
 args <- commandArgs(trailingOnly = TRUE)
 source_root <- if (length(args)) normalizePath(args[1], mustWork = TRUE) else
-  normalizePath("../titan-prediction", mustWork = TRUE)
+  normalizePath("../pathology-foundation-model-atlas", mustWork = TRUE)
 package_root <- if (length(args) >= 2L) normalizePath(args[2], mustWork = TRUE) else
   normalizePath(getwd(), mustWork = TRUE)
 
@@ -205,9 +205,15 @@ if (anyNA(registry$representation_effect_threshold_crossing[alternative_rows]) |
   stop("One or more alternative-representation models lack selection/qualification metadata")
 }
 fwrite(registry, file.path(package_root, "inst", "extdata", "model_registry.csv"))
-saveRDS(reference_list, file.path(package_root, "inst", "extdata", "prediction_reference.rds"),
-        compress = "xz")
+reference_path <- file.path(package_root, "inst", "extdata",
+                            "prediction_reference.rds")
+if (file.exists(reference_path)) {
+  stop("Public package tree contains prediction-reference RDS data. ",
+       "The representation-specific downloadable collections carry their own ",
+       "reference distributions; no TITAN-derived reference file may be bundled.")
+}
 
 cat("Registry rows:", nrow(registry), "\n")
-cat("Reference models:", length(reference_list), "\n")
+cat("Reference models retained only in downloadable collections:",
+    length(reference_list), "\n")
 cat("Reference values:", nrow(reference), "\n")

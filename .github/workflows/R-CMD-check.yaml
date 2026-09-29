@@ -20,22 +20,39 @@ jobs:
       - name: Audit public licensing and fitted-object boundary
         run: Rscript tools/audit_public_release.R
       - uses: r-lib/actions/setup-pandoc@v2
-      - name: Install pinned fastPLS
+      - name: Install CRAN fastPLS 0.3
         run: |
-          install.packages("float")
+          install.packages(c("digest", "float"), repos = "https://cloud.r-project.org")
           archive <- tempfile(fileext = ".tar.gz")
-          download.file(
-            "https://codeload.github.com/tkcaccia/fastPLS/tar.gz/b518f75285c387632c2443a0c0989d75c9dcda48",
-            archive,
-            mode = "wb"
-          )
+          urls <- c("https://cloud.r-project.org/src/contrib/fastPLS_0.3.tar.gz",
+                    "https://cloud.r-project.org/src/contrib/Archive/fastPLS/fastPLS_0.3.tar.gz")
+          downloaded <- FALSE
+          for (url in urls) {
+            downloaded <- tryCatch({
+              status <- suppressWarnings(download.file(url, archive, mode = "wb", quiet = TRUE))
+              identical(status, 0L) && file.exists(archive) && file.info(archive)$size > 0
+            }, error = function(e) FALSE)
+            if (downloaded) break
+          }
+          stopifnot(downloaded)
+          stopifnot(identical(
+            digest::digest(file = archive, algo = "sha256"),
+            "e752ed28dcbaf162d8e622d3c7dc436b315ef4b767c06db2ae8b29cbbfa7b51f"
+          ))
           install.packages(archive, repos = NULL, type = "source")
+          stopifnot(as.character(packageVersion("fastPLS")) == "0.3")
+          stopifnot(identical(packageDescription("fastPLS")$Repository, "CRAN"))
         shell: Rscript {0}
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
           needs: check
+      - name: Verify fastPLS provenance after dependency resolution
+        run: |
+          stopifnot(as.character(packageVersion("fastPLS")) == "0.3")
+          stopifnot(identical(packageDescription("fastPLS")$Repository, "CRAN"))
+        shell: Rscript {0}
       - uses: r-lib/actions/check-r-package@v2
         with:
-          args: 'c("--no-manual")'
+          args: 'c("--as-cran", "--no-manual")'
           error-on: '"error"'

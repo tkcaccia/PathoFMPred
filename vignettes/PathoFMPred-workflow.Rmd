@@ -41,11 +41,11 @@ asset-specific terms and required attributions are recorded in
 All supplied performance estimates are internal research estimates. They do
 not establish external validity, assay equivalence, or clinical utility.
 
-PathoFMPred enforces the fastPLS version recorded in each fitted object. When
-the R installation records the optional `RemoteSha` field, the exact Git
-revision is also enforced. Base installation from an immutable source archive
-does not populate `RemoteSha`; PathoFMPred then issues one provenance warning
-per session and proceeds only if the recorded package version matches.
+PathoFMPred checks the fastPLS version and source repository recorded in each
+new fitted object against the installed package before inference. Legacy
+objects that record a Git `RemoteSha` also retain their revision check. A
+CRAN installation does not have that Git field; new CRAN-built objects instead
+record `Repository: CRAN`.
 
 # Install optional public model collections
 
@@ -60,7 +60,7 @@ An institutional mirror can be selected without changing package code:
 ```{r mirror, eval=FALSE, purl=FALSE}
 fetch_pathofmpred_models(
   "GigaSSL",
-  base_url = "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v2"
+  base_url = "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v3"
 )
 ```
 
@@ -107,8 +107,9 @@ For a binary endpoint, `predicted_class_label` uses the negative and positive
 labels recorded during fitting. `lda_score` is an uncalibrated discriminant
 score and is not a probability.
 
-The function reports feature-only IDs, outcome-only IDs, and missingness for
-every endpoint in `custom_object$data_audit`. Numeric outcomes with two observed
+The function reports feature-only IDs, outcome-only IDs, input-table row counts,
+and endpoint-specific missingness both before and after ID matching in
+`custom_object$data_audit`. Numeric outcomes with two observed
 levels are treated as binary by default. Other numeric outcomes are treated as
 continuous. Types can be fixed explicitly with a named vector. Binary outcomes
 encoded as anything other than `0`/`1` or `FALSE`/`TRUE` require an explicit
@@ -144,7 +145,7 @@ authors in the gated
 [MahmoodLab/TITAN repository](https://huggingface.co/MahmoodLab/TITAN),
 including `TCGA_TITAN_features.pkl`. Access must be requested from the upstream
 repository. The project conversion script is
-`tools/convert_titan_features.py` in the companion analysis repository. It
+`tools/convert_tcga_titan_pickle.py` in the companion analysis repository. It
 creates a CSV whose rows retain TCGA slide identifiers and whose 768 feature
 columns are named consistently.
 
@@ -165,9 +166,9 @@ repository documents and converts the following sources:
   hallmarks, glutathione, and vitamin B6 pathways.
 
 The exact expected filenames and local configuration are recorded in
-[`config/paths.example.R`](https://github.com/tkcaccia/titan-prediction/blob/main/config/paths.example.R).
+[`config/paths.example.R`](https://github.com/tkcaccia/pathology-foundation-model-atlas/blob/main/config/paths.example.R).
 The acquisition and conversion workflow is documented in the companion
-[`README`](https://github.com/tkcaccia/titan-prediction). Molecular sources do
+[`README`](https://github.com/tkcaccia/pathology-foundation-model-atlas). Molecular sources do
 not all link to histology at the same level. Some provide a TCGA sample barcode,
 whereas the PanImmune table links at participant level. A matching sample
 barcode does not prove that the slide and molecular assay came from the same
