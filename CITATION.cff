@@ -1,9 +1,8 @@
 cff-version: 1.2.0
 message: "If you use PathoFMPred, please cite this software and the associated manuscript."
-title: "PathoFMPred: cancer-specific prediction from pathology foundation-model representations"
+title: "PathoFMPred: tumour feature models from pathology representations"
 type: software
-version: 0.3.0
-license: MIT
+version: 0.4.0
 authors:
   - given-names: Aamilah
     family-names: Ismail

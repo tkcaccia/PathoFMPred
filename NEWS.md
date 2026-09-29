@@ -1,3 +1,12 @@
+# PathoFMPred 0.4.0
+
+- Rebuilt the fitted-object collections and internal performance metadata with
+  fastPLS 0.3 installed from CRAN.
+- Record the fastPLS source repository in newly created model objects and
+  verify it before inference when present.
+- Point documentation to the renamed pathology-foundation-model-atlas analysis
+  repository. TITAN fitted objects remain excluded from the public package.
+
 # PathoFMPred 0.3.0
 
 - Relicensed contributor-authored source code under MIT while explicitly

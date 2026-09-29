@@ -24,18 +24,13 @@ and CC BY 4.0 grants.
 ## Install
 
 ```r
-remotes::install_github(
-  "tkcaccia/fastPLS@b518f75285c387632c2443a0c0989d75c9dcda48",
-  upgrade = "never"
-)
+install.packages("fastPLS", repos = "https://cloud.r-project.org")
 remotes::install_github("tkcaccia/PathoFMPred", dependencies = TRUE)
 ```
 
-PathoFMPred enforces the recorded fastPLS version. It also verifies the Git
-revision when the R installation records `RemoteSha`. Base installation from a
-source archive does not record that optional field; in that case PathoFMPred
-issues one provenance warning per session and continues only when the package
-version matches.
+PathoFMPred checks the fastPLS provenance stored with each fitted model. The
+current reference collections use fastPLS 0.3 from CRAN. Older collections
+retain their Git revision metadata and may trigger a provenance warning.
 
 ## Download optional public model collections
 

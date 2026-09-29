@@ -128,7 +128,7 @@ fetch_pathofmpred_models <- function(
     destination = .pathofm_user_model_dir(),
     base_url = getOption(
       "PathoFMPred.model_base_url",
-      "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v2"
+      "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v3"
     ),
     overwrite = FALSE, quiet = FALSE, verify = TRUE) {
   foundation_model <- unique(match.arg(
@@ -137,8 +137,8 @@ fetch_pathofmpred_models <- function(
   dir.create(destination, recursive = TRUE, showWarnings = FALSE)
   paths <- stats::setNames(character(length(foundation_model)), foundation_model)
   expected_sha256 <- c(
-    GigaSSL = "3ccfb101a24cc1ac9c6564d42c3392a0a139ccddd052cefb326db47d1d54ae1c",
-    ProvGigaPath = "712b39f122f5efddc8d182700d84f47314943870de42f5596aa4bec6daeb67c8"
+    GigaSSL = "874b84cb040d7c955b96f95b29ee181c9056f5e40a3feda28171f942063d0745",
+    ProvGigaPath = "72868d9fb7562f3eafaf7cc287cb4e909e1767587662be07625c985a028da832"
   )
   for (model in foundation_model) {
     filename <- paste0("pathofmpred_", .pathofm_slug(model), ".rds")
@@ -180,10 +180,23 @@ fetch_pathofmpred_models <- function(
       stop("Downloaded object identifies itself as ", object$foundation_model,
            ", not ", model, ".", call. = FALSE)
     }
-    if (file.exists(target) && isTRUE(overwrite)) unlink(target)
+    backup <- NULL
+    if (file.exists(target) && isTRUE(overwrite)) {
+      backup <- tempfile(pattern = paste0(filename, "-backup-"),
+                         tmpdir = destination)
+      if (!file.rename(target, backup)) {
+        stop("Could not preserve the existing model before overwrite: ",
+             target, ".", call. = FALSE)
+      }
+    }
     if (!file.rename(temporary, target)) {
+      if (!is.null(backup) && !file.rename(backup, target)) {
+        stop("Could not install the validated download or restore the existing model. The backup is at ",
+             backup, ".", call. = FALSE)
+      }
       stop("Could not move the validated download to ", target, ".", call. = FALSE)
     }
+    if (!is.null(backup)) unlink(backup)
     paths[[model]] <- normalizePath(target)
   }
   rm(list = ls(envir = .pathofm_cache), envir = .pathofm_cache)

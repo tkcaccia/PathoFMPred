@@ -77,16 +77,20 @@ plot_titan_radar <- function(predictions, max_endpoints = 12L) {
   duplicated_label <- duplicated(raw_label) | duplicated(raw_label, fromLast = TRUE)
   raw_label[duplicated_label] <- paste0(raw_label[duplicated_label], " [",
                                        d$family[duplicated_label], "]")
-  d$label <- .short_endpoint(raw_label, 28L)
+  d$label <- .short_endpoint(raw_label, 20L)
   d$site_sensitive <- grepl("^site-sensitive", d$site_robustness_status)
-  d$corner_label <- sprintf("%s\npred. %s", d$label,
+  d$corner_label <- sprintf("%s %s", d$label,
                             formatC(d$prediction, digits = 4, format = "fg"))
   n <- nrow(d)
   d$theta <- pi / 2 - 2 * pi * (seq_len(n) - 1L) / n
   d$x <- cos(d$theta) * d$reference_percentile / 100
   d$y <- sin(d$theta) * d$reference_percentile / 100
-  d$label_x <- cos(d$theta) * 1.22
-  d$label_y <- sin(d$theta) * 1.22
+  label_radius <- rep(1.22, n)
+  lower_labels <- which(sin(d$theta) < -0.75)
+  label_radius[lower_labels] <- 1.22 +
+    0.19 * ((seq_along(lower_labels) - 1L) %% 2L)
+  d$label_x <- cos(d$theta) * label_radius
+  d$label_y <- sin(d$theta) * label_radius
   d$hjust <- ifelse(cos(d$theta) > 0.25, 0,
                     ifelse(cos(d$theta) < -0.25, 1, 0.5))
   d$vjust <- ifelse(abs(cos(d$theta)) < 0.25, 0.5,
@@ -131,7 +135,7 @@ plot_titan_radar <- function(predictions, max_endpoints = 12L) {
                        ggplot2::aes(x = x, y = y, label = label),
                        hjust = 1, vjust = -0.15, size = 2.4,
                        color = "#718096") +
-    ggplot2::coord_equal(xlim = c(-1.62, 1.62), ylim = c(-1.48, 1.48),
+    ggplot2::coord_equal(xlim = c(-1.62, 1.62), ylim = c(-1.64, 1.48),
                          clip = "off") +
     ggplot2::labs(
       title = "Continuous internally derived TCGA estimates",

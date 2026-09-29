@@ -170,7 +170,9 @@ pathofmpred_control <- function(
     nested_cv = do.call(rbind, repeat_metrics),
     selected_components_across_repeats = selected,
     fastPLS_version = as.character(utils::packageVersion("fastPLS")),
-    fastPLS_remote_sha = as.character(utils::packageDescription("fastPLS")$RemoteSha)
+    fastPLS_remote_sha = if (is.null(utils::packageDescription("fastPLS")$RemoteSha))
+      NA_character_ else as.character(utils::packageDescription("fastPLS")$RemoteSha),
+    fastPLS_repository = as.character(utils::packageDescription("fastPLS")$Repository)
   )
   list(artifact = artifact, registry = data.frame(
     model_id = model_id, endpoint = endpoint, outcome_type = type,
@@ -251,6 +253,12 @@ create_pathofmpred_object <- function(
   aggregation <- match.arg(aggregation)
   features <- .pathofm_read_table(feature_table, "feature_table")
   outcomes <- .pathofm_read_table(outcome_table, "outcome_table")
+  if (anyDuplicated(names(features)) || anyDuplicated(names(outcomes))) {
+    stop("Feature and outcome tables must have unique column names.",
+         call. = FALSE)
+  }
+  input_outcome_rows <- nrow(outcomes)
+  input_outcomes <- outcomes
   if (length(id_column) != 1L || !is.character(id_column) ||
       !id_column %in% names(features) || !id_column %in% names(outcomes)) {
     stop("id_column must name one column present in both tables.", call. = FALSE)
@@ -292,9 +300,18 @@ create_pathofmpred_object <- function(
   audit <- list(
     matching_ids = length(common_ids),
     feature_rows = nrow(features), unique_feature_ids = length(unique(feature_ids)),
+    input_outcome_rows = input_outcome_rows,
     outcome_rows = nrow(outcomes), aggregation = aggregation,
     unmatched_feature_ids = setdiff(pooled_ids, outcome_ids),
     unmatched_outcome_ids = setdiff(outcome_ids, pooled_ids),
+    input_outcome_missingness = data.frame(
+      endpoint = outcome_columns,
+      missing = vapply(input_outcomes[outcome_columns],
+                       function(x) sum(is.na(x)), integer(1)),
+      observed = vapply(input_outcomes[outcome_columns],
+                        function(x) sum(!is.na(x)), integer(1)),
+      stringsAsFactors = FALSE
+    ),
     outcome_missingness = data.frame(
       endpoint = outcome_columns,
       missing = vapply(outcomes[outcome_columns], function(x) sum(is.na(x)), integer(1)),
