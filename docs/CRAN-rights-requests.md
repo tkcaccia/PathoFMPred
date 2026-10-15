@@ -6,7 +6,7 @@ licence documents with the project release record.
 
 ## What needs a written answer
 
-The proposed CRAN 0.5.0 source archive contains MIT-licensed code and
+The proposed CRAN 0.1.0 source archive contains MIT-licensed code and
 documentation only. It does not contain the fitted Giga-SSL, Prov-GigaPath or
 TITAN objects, the research atlas registry, slide embeddings, or patient rows.
 Its optional downloader has no built-in source URL or digest. CRAN submission
@@ -183,7 +183,7 @@ Subject: Rights review before CRAN submission of PathoFMPred
 
 Dear Ms Viviani,
 
-We are preparing PathoFMPred 0.5.0 for CRAN under MIT. The proposed CRAN
+We are preparing PathoFMPred 0.1.0 for CRAN under MIT. The proposed CRAN
 archive is code-only: it excludes pretrained encoders, embeddings, fitted
 research models, the atlas registry and patient-level data. It can fit models
 from user-provided tables and load independently obtained collections. The
