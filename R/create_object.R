@@ -25,6 +25,11 @@
 #' @param rsvd_oversample,rsvd_power Optional overrides. `NULL` preserves the
 #'   installed fastPLS defaults.
 #' @return A settings list for [create_pathofmpred_object()].
+#' @examples
+#' settings <- pathofmpred_control(
+#'   components = 1:3, outer_folds = 3, inner_folds = 3, seed = 42
+#' )
+#' settings$components
 #' @export
 pathofmpred_control <- function(
     components = 1:20, outer_folds = 5L, inner_folds = 5L, repeats = 1L,

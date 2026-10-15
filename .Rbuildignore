@@ -8,5 +8,8 @@
 ^LICENSE\.md$
 ^docs$
 ^examples$
+^inst/models$
+^inst/extdata$
+^inst/licenses/MODEL_RELEASE_NOTES\.md$
 ^[A-Za-z0-9.]+_[0-9.]+\.tar\.gz$
 ^[A-Za-z0-9.]+\.Rcheck$

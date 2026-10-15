@@ -2,14 +2,14 @@ cff-version: 1.2.0
 message: "If you use PathoFMPred, please cite this software and the associated manuscript."
 title: "PathoFMPred: tumour feature models from pathology representations"
 type: software
-version: 0.4.0
+version: 0.5.0
 authors:
   - given-names: Aamilah
     family-names: Ismail
   - given-names: Martin
     family-names: Ocharo
-  - given-names: Moussa
-    family-names: Kassim
+  - given-names: Moussa Kassim
+    family-names: Mohamed
   - given-names: Dalia
     family-names: Ahmed
   - given-names: Brendon
@@ -18,12 +18,12 @@ authors:
     family-names: Ojo
   - given-names: Ekene Emmanuel
     family-names: Nweke
+  - given-names: Alessia
+    family-names: Vignoli
   - given-names: Silvano
     family-names: Piazza
   - given-names: Dinesh
     family-names: Gupta
-  - given-names: Alessia
-    family-names: Vignoli
   - given-names: Leonardo
     family-names: Tenori
   - given-names: Stefano

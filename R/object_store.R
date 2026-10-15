@@ -55,20 +55,13 @@ validate_pathofmpred_object <- function(object) {
   )
 }
 
-.pathofm_load_object <- function(foundation_model, allow_example = TRUE,
-                                  refresh = FALSE) {
-  key <- paste0(foundation_model, "::", allow_example)
+.pathofm_load_object <- function(foundation_model, refresh = FALSE) {
+  key <- paste(foundation_model, .pathofm_user_model_dir(), sep = "::")
   if (!refresh && exists(key, envir = .pathofm_cache, inherits = FALSE)) {
     return(get(key, envir = .pathofm_cache, inherits = FALSE))
   }
   candidates <- .pathofm_object_candidates(foundation_model)
   path <- candidates[nzchar(candidates) & file.exists(candidates)][1L]
-  if ((!length(path) || is.na(path)) && allow_example &&
-      identical(foundation_model, "GigaSSL")) {
-    example <- system.file("models", "pathofmpred_gigassl_example.rds",
-                           package = "PathoFMPred")
-    if (nzchar(example) && file.exists(example)) path <- example
-  }
   if (!length(path) || is.na(path) || !file.exists(path)) {
     stop(
       "No fitted ", foundation_model, " PathoFMPred object is installed. ",
@@ -80,8 +73,11 @@ validate_pathofmpred_object <- function(object) {
         )
       } else {
         paste0(
-          "Call fetch_pathofmpred_models(\"", foundation_model,
-          "\") explicitly after package installation."
+          "Obtain a collection under its applicable terms, then place ",
+          "pathofmpred_", .pathofm_slug(foundation_model), ".rds in ",
+          .pathofm_user_model_dir(), ". Alternatively, call ",
+          "fetch_pathofmpred_models() with a source URL and SHA-256 ",
+          "provided by the rights holder."
         )
       },
       call. = FALSE
@@ -99,61 +95,69 @@ validate_pathofmpred_object <- function(object) {
   if (is.null(artifact)) {
     stop(
       "Model ", model_id, " is listed in the atlas registry but is not present ",
-      "in the installed ", foundation_model, " object. Install the full object ",
-      "with fetch_pathofmpred_models() if it is publicly available.",
+      "in the installed ", foundation_model, " object. Supply an authorized ",
+      "collection containing this model.",
       call. = FALSE
     )
   }
   artifact
 }
 
-#' Download optional full PathoFMPred model collections
+#' Download user-authorized PathoFMPred model collections
 #'
-#' Downloads occur only after an explicit user call. The public package does
-#' not download model files during installation, loading, checking, or vignette
-#' construction. TITAN-derived fitted parameters are deliberately unavailable
-#' through this function.
+#' The package does not provide model files, download URLs, or checksums. A
+#' download occurs only after the user supplies a source and its SHA-256 digest.
+#' Users must confirm that they may access and use the collection under its
+#' applicable terms. TITAN-derived objects are not supported by this helper;
+#' authorized local TITAN objects can be used directly.
 #'
 #' @param foundation_model One or both of `GigaSSL` and `ProvGigaPath`.
 #' @param destination Directory in which model collections will be stored.
-#' @param base_url Release directory containing the model files. Advanced users
-#'   may point this at an institutional mirror.
+#' @param base_url User-supplied HTTPS release directory, or a `file://` URL
+#'   for an authorized local mirror. There is no package default.
+#' @param expected_sha256 Named character vector containing the expected
+#'   64-character SHA-256 digest for every requested representation. Obtain
+#'   these digests independently from the authorized source.
 #' @param overwrite Replace an existing file.
 #' @param quiet Passed to [utils::download.file()].
-#' @param verify Verify the published SHA-256 digest before accepting a file.
 #' @return Named paths to the downloaded model collections.
 #' @export
 fetch_pathofmpred_models <- function(
-    foundation_model = c("GigaSSL", "ProvGigaPath"),
+    foundation_model,
     destination = .pathofm_user_model_dir(),
-    base_url = getOption(
-      "PathoFMPred.model_base_url",
-      "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v3"
-    ),
-    overwrite = FALSE, quiet = FALSE, verify = TRUE) {
+    base_url,
+    expected_sha256,
+    overwrite = FALSE, quiet = FALSE) {
   foundation_model <- unique(match.arg(
     foundation_model, c("GigaSSL", "ProvGigaPath"), several.ok = TRUE
   ))
+  if (missing(base_url) || length(base_url) != 1L || is.na(base_url) ||
+      !grepl("^(https|file)://", base_url)) {
+    stop("base_url must be an explicit HTTPS or file:// source supplied by the user.",
+         call. = FALSE)
+  }
+  if (missing(expected_sha256) || is.null(names(expected_sha256)) ||
+      !all(foundation_model %in% names(expected_sha256)) ||
+      anyNA(expected_sha256[foundation_model]) ||
+      any(!grepl("^[0-9a-fA-F]{64}$", expected_sha256[foundation_model]))) {
+    stop("expected_sha256 must contain a valid named SHA-256 digest for every requested representation.",
+         call. = FALSE)
+  }
   dir.create(destination, recursive = TRUE, showWarnings = FALSE)
   paths <- stats::setNames(character(length(foundation_model)), foundation_model)
-  expected_sha256 <- c(
-    GigaSSL = "874b84cb040d7c955b96f95b29ee181c9056f5e40a3feda28171f942063d0745",
-    ProvGigaPath = "72868d9fb7562f3eafaf7cc287cb4e909e1767587662be07625c985a028da832"
-  )
   for (model in foundation_model) {
     filename <- paste0("pathofmpred_", .pathofm_slug(model), ".rds")
     target <- file.path(destination, filename)
     if (file.exists(target) && !isTRUE(overwrite)) {
-      if (isTRUE(verify)) {
-        observed <- digest::digest(file = target, algo = "sha256",
-                                   serialize = FALSE)
-        if (!identical(unname(observed), unname(expected_sha256[[model]]))) {
-          stop(
-            "SHA-256 verification failed for the existing ", model,
-            " object. Set overwrite = TRUE to download a clean copy.",
-            call. = FALSE
-          )
-        }
+      observed <- digest::digest(file = target, algo = "sha256",
+                                 serialize = FALSE)
+      if (!identical(tolower(unname(observed)),
+                     tolower(unname(expected_sha256[[model]])))) {
+        stop(
+          "SHA-256 verification failed for the existing ", model,
+          " object. Set overwrite = TRUE to download a clean copy.",
+          call. = FALSE
+        )
       }
       object <- readRDS(target)
       validate_pathofmpred_object(object)
@@ -167,12 +171,11 @@ fetch_pathofmpred_models <- function(
     if (!identical(status, 0L) || !file.exists(temporary)) {
       stop("Download failed for ", model, " from ", url, ".", call. = FALSE)
     }
-    if (isTRUE(verify)) {
-      observed <- digest::digest(file = temporary, algo = "sha256",
-                                 serialize = FALSE)
-      if (!identical(unname(observed), unname(expected_sha256[[model]]))) {
-        stop("SHA-256 verification failed for ", model, ".", call. = FALSE)
-      }
+    observed <- digest::digest(file = temporary, algo = "sha256",
+                               serialize = FALSE)
+    if (!identical(tolower(unname(observed)),
+                   tolower(unname(expected_sha256[[model]])))) {
+      stop("SHA-256 verification failed for ", model, ".", call. = FALSE)
     }
     object <- readRDS(temporary)
     validate_pathofmpred_object(object)

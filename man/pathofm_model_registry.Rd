@@ -3,15 +3,17 @@
 \name{pathofm_model_registry}
 \alias{pathofm_model_registry}
 \alias{titan_model_registry}
-\title{Read the bundled pathology-foundation-model registry}
+\title{Read registries from locally available model collections}
 \usage{
 pathofm_model_registry()
 
 titan_model_registry()
 }
 \value{
-A data frame with one row per fitted cancer-endpoint model.
+A data frame with one row per locally available fitted model.
 }
 \description{
-Read the bundled pathology-foundation-model registry
+The public package contains no fitted-model registry. This function reads
+metadata from collections that the user has installed under the applicable
+access terms. An empty data frame is returned when none is installed.
 }

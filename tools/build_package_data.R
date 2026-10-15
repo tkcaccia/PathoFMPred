@@ -1,3 +1,14 @@
+# This legacy research-asset builder must not run while preparing a CRAN
+# source package. It can recreate fitted objects and a representation-derived
+# registry in inst/, which the code-only release deliberately excludes.
+if (!identical(Sys.getenv("PATHOFMPRED_ALLOW_RESEARCH_ASSETS"), "1")) {
+  stop(
+    "Research-asset generation is disabled for the code-only CRAN package. ",
+    "Set PATHOFMPRED_ALLOW_RESEARCH_ASSETS=1 only in a controlled research ",
+    "workspace with documented redistribution rights."
+  )
+}
+
 args <- commandArgs(trailingOnly = TRUE)
 source_root <- if (length(args)) normalizePath(args[1], mustWork = TRUE) else
   normalizePath("../pathology-foundation-model-atlas", mustWork = TRUE)

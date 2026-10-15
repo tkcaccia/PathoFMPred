@@ -1,38 +1,20 @@
-test_that("installed model collections and registry agree", {
+test_that("the package starts without fitted models or an atlas registry", {
+  old <- getOption("PathoFMPred.model_dir")
+  on.exit(options(PathoFMPred.model_dir = old), add = TRUE)
+  options(PathoFMPred.model_dir = tempfile("pathofmpred-empty-"))
   installed <- available_foundation_models()
-  expect_true("GigaSSL" %in% installed)
+  expect_length(installed, 0L)
   registry <- pathofm_model_registry()
-  expect_gt(nrow(registry), 0L)
-  for (model in installed) {
-    available <- available_pathofm_models(
-      model, include_limited_evidence = TRUE
-    )
-    expect_gt(nrow(available), 0L)
-    expect_true(all(available$foundation_model == model))
-  }
+  expect_equal(nrow(registry), 0L)
+  expect_equal(nrow(available_pathofm_models("GigaSSL")), 0L)
 })
 
-test_that("minimal GigaSSL example predicts one binary and one continuous target", {
-  models <- available_pathofm_models(
-    "GigaSSL", "COAD", include_limited_evidence = TRUE
-  )
-  expect_true(all(c("APC", "MANTIS score") %in% models$endpoint))
-  x <- example_pathofm_features(
-    "COAD", "GigaSSL", include_limited_evidence = TRUE
-  )
-  answer <- suppressWarnings(predict_pathofm(
-    "COAD", x, "GigaSSL", patient_id = "software_fixture",
-    include_limited_evidence = TRUE
-  ))
-  expect_gte(nrow(answer), 2L)
-  expect_true(all(c("binary", "continuous") %in% answer$outcome_type))
-  binary <- answer[answer$endpoint == "APC" &
-                     answer$outcome_type == "binary", , drop = FALSE]
-  expect_equal(nrow(binary), 1L)
-  expect_true(binary$predicted_class %in% c("0", "1"))
-  expect_true(is.finite(binary$lda_score))
-  expect_false(binary$rank_is_probability)
-  expect_match(binary$rank_interpretation, "not probability", fixed = TRUE)
+test_that("atlas examples require an authorized locally installed collection", {
+  old <- getOption("PathoFMPred.model_dir")
+  on.exit(options(PathoFMPred.model_dir = old), add = TRUE)
+  options(PathoFMPred.model_dir = tempfile("pathofmpred-empty-"))
+  expect_error(example_pathofm_features("COAD", "GigaSSL"),
+               "No predictable")
 })
 
 test_that("runtime validation separates required version from optional Git metadata", {
@@ -199,30 +181,48 @@ test_that("builder requires and preserves the binary event-class meaning", {
                prediction$predicted_class_label)
 })
 
-test_that("public fetch excludes TITAN and validates downloaded objects", {
+test_that("user-supplied fetch excludes TITAN and verifies checksums", {
   expect_error(fetch_pathofmpred_models("TITAN"), "arg")
-  source <- system.file(
-    "models", "pathofmpred_gigassl_example.rds", package = "PathoFMPred"
-  )
   mirror <- file.path(tempdir(), "pathofmpred-mirror")
   destination <- file.path(tempdir(), "pathofmpred-download")
   dir.create(mirror, showWarnings = FALSE)
-  file.copy(source, file.path(mirror, "pathofmpred_gigassl.rds"),
-            overwrite = TRUE)
+  source <- file.path(mirror, "pathofmpred_gigassl.rds")
+  saveRDS(list(
+    format_version = "1", foundation_model = "GigaSSL",
+    feature_names = c("feature_1", "feature_2"),
+    registry = data.frame(
+      model_id = "synthetic_fixture", foundation_model = "GigaSSL",
+      cancer_type = "COAD", endpoint = "synthetic_endpoint",
+      outcome_type = "binary", family = "synthetic",
+      matched_representation_effect_threshold_crossing = TRUE
+    ),
+    models = list(synthetic_fixture = list(model_id = "synthetic_fixture")),
+    provenance = list(source = "synthetic unit test")
+  ), source)
+  sha <- digest::digest(file = source, algo = "sha256", serialize = FALSE)
+  expect_error(fetch_pathofmpred_models("GigaSSL"), "base_url")
+  expect_error(fetch_pathofmpred_models(
+    "GigaSSL", base_url = paste0("file://", mirror)
+  ), "expected_sha256")
   path <- fetch_pathofmpred_models(
     "GigaSSL", destination = destination,
-    base_url = paste0("file://", mirror), overwrite = TRUE, quiet = TRUE,
-    verify = FALSE
+    base_url = paste0("file://", mirror),
+    expected_sha256 = c(GigaSSL = sha), overwrite = TRUE, quiet = TRUE
   )
   expect_true(file.exists(path[["GigaSSL"]]))
   expect_true(validate_pathofmpred_object(readRDS(path[["GigaSSL"]])))
+  old <- getOption("PathoFMPred.model_dir")
+  on.exit(options(PathoFMPred.model_dir = old), add = TRUE)
+  options(PathoFMPred.model_dir = destination)
+  expect_identical(available_foundation_models(), "GigaSSL")
+  expect_equal(nrow(available_pathofm_models("GigaSSL", "COAD")), 1L)
 
   writeBin(as.raw(1:8), path[["GigaSSL"]])
   expect_error(
     fetch_pathofmpred_models(
       "GigaSSL", destination = destination,
       base_url = paste0("file://", mirror), overwrite = FALSE, quiet = TRUE,
-      verify = TRUE
+      expected_sha256 = c(GigaSSL = sha)
     ),
     "SHA-256 verification failed"
   )

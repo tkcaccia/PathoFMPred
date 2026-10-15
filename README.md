@@ -6,20 +6,19 @@ It links feature and outcome tables by an explicit patient identifier, pools
 repeated slide rows at patient level, performs nested cross-validation, and
 fits a final model for each eligible outcome.
 
-The source code is available under the MIT license and is licensed separately
-from the fitted model collections, registry and reference data. The
-public package contains only two small Giga-SSL demonstration models. It does
-not contain TITAN-derived fitted parameters. Full Giga-SSL and Prov-GigaPath
-collections are downloaded only after an explicit user call.
+The source code is available under the MIT license. The CRAN-oriented source
+package contains no fitted model collection, atlas registry, slide embedding,
+or patient-level data. Fitted collections obtained separately are governed by
+their own terms; the package MIT license does not cover them.
 
 These models provide internally derived TCGA research estimates. They have not
 been externally validated and are not intended for diagnosis or treatment.
 Binary scores and reference ranks are not probabilities.
 
-See `inst/licenses/MODEL_ACCESS.md` for the CC BY 4.0 terms applied to original
-registry/result material and the separate representation-specific conditions
-for fitted objects. TITAN-derived objects are expressly excluded from the MIT
-and CC BY 4.0 grants.
+See `inst/licenses/MODEL_ACCESS.md` for the package boundary. Earlier GitHub
+model releases have been withdrawn from public access while their
+redistribution rights are reviewed. Existing collaborators retain access
+through the separate private repository.
 
 ## Install
 
@@ -32,17 +31,27 @@ PathoFMPred checks the fastPLS provenance stored with each fitted model. The
 current reference collections use fastPLS 0.3 from CRAN. Older collections
 retain their Git revision metadata and may trigger a provenance warning.
 
-## Download optional public model collections
+## Use an authorized model collection
 
 ```r
 library(PathoFMPred)
-fetch_pathofmpred_models(c("GigaSSL", "ProvGigaPath"))
+
+# Place an authorized collection at the path returned by:
+tools::R_user_dir("PathoFMPred", which = "data")
+
+# Alternatively, only when an authorized source has supplied both values:
+fetch_pathofmpred_models(
+  foundation_model = "GigaSSL",
+  base_url = "https://authorized.example.org/release",
+  expected_sha256 = c(GigaSSL = "<64-character SHA-256 digest>")
+)
 ```
 
-Nothing is downloaded during installation, package loading, checking, or
-vignette construction. `fetch_pathofmpred_models()` stores validated objects in
-the user's R data directory. The download location can be changed with its
-`destination` or `base_url` arguments.
+The URL and digest above are placeholders, not a working release. The user
+must obtain the collection and digest under the applicable terms. Nothing is
+downloaded during installation, package loading, checking, or vignette
+construction. The helper stores verified objects in the user's R data
+directory.
 
 ## Build a model collection
 
@@ -95,9 +104,21 @@ object <- create_pathofmpred_object(
 )
 ```
 
+## Rebuild the three representation collections locally
+
+The [package vignette](vignettes/PathoFMPred-workflow.Rmd) gives non-running
+examples for TITAN, Giga-SSL and Prov-GigaPath, including the official
+embedding sources, conversion script, patient-ID linkage and fitting calls.
+You must acquire each input under its own terms and prepare a patient-level
+outcome table from the cited molecular sources. The function
+`create_pathofmpred_object()` accepts any future representation with the same
+ID and numeric-feature rules. A newly fitted collection is not necessarily
+identical to the atlas reference collection unless its input snapshot, target
+definitions, eligibility rules and fitting settings also match.
+
 ## TITAN policy
 
-The public repository does not distribute `pathofmpred_titan.rds`. Users may
+The CRAN source package does not distribute `pathofmpred_titan.rds`. Users may
 obtain the official TCGA representations from the gated
 [MahmoodLab/TITAN](https://huggingface.co/MahmoodLab/TITAN) repository and build
 their own object with `create_pathofmpred_object()`. The vignette documents the
@@ -107,14 +128,15 @@ sources. The resulting local object can be applied with
 redistributed without permission from the upstream rights holder.
 
 The access-controlled `tkcaccia/PathoFMPred-private` repository contains the
-project's TITAN, Giga-SSL, and Prov-GigaPath reference objects.
+project's research reference objects. Its access terms are separate from the
+CRAN package licence.
 
-## Minimal public example
+## Apply an authorized fitted collection
 
 ```r
 library(PathoFMPred)
 
-available_pathofm_models("GigaSSL", "COAD")
+available_pathofm_models("GigaSSL", "COAD") # after installing the collection
 x <- example_pathofm_features("COAD", "GigaSSL")
 pred <- predict_pathofm(
   cancer = "COAD",
@@ -126,5 +148,7 @@ pred[, c("endpoint", "outcome_type", "prediction",
          "predicted_class", "lda_score")]
 ```
 
-See `vignette("PathoFMPred-workflow")` for the complete workflow and licensing
-boundaries.
+No model is available in a fresh CRAN installation. To run a fully local
+example without any third-party model, use `create_pathofmpred_object()` with
+your own feature and outcome tables, then `predict_pathofmpred_object()`.
+See `vignette("PathoFMPred-workflow")` for the workflow and licensing boundary.

@@ -2,14 +2,15 @@
 % Please edit documentation in R/registry.R
 \name{available_foundation_models}
 \alias{available_foundation_models}
-\title{List foundation-model representations bundled with the package}
+\title{List locally available foundation-model representations}
 \usage{
 available_foundation_models()
 }
 \value{
 A character vector. Availability means that at least one fitted
-  research model is bundled; it does not imply external validation.
+  research model collection is installed; it does not imply external
+  validation or permission to redistribute the collection.
 }
 \description{
-List foundation-model representations bundled with the package
+List locally available foundation-model representations
 }

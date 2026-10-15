@@ -138,7 +138,7 @@ predict_pathofm <- function(cancer, features,
     suffix <- if (nrow(all_models) && !isTRUE(include_limited_evidence)) {
       " Only exploratory/limited-evidence models match; set include_limited_evidence = TRUE for explicit research-only opt-in."
     } else ""
-    stop("No predictable bundled models are available for: ",
+    stop("No predictable locally installed models are available for: ",
          paste(unsupported, collapse = ", "), ".", suffix, call. = FALSE)
   }
   limited_count <- sum(grepl("^exploratory_limited",
@@ -668,7 +668,7 @@ predict_titan <- function(cancer, features, patient_id = NULL,
 #' The vector is the across-model mean of stored training-feature means for the
 #' requested cancer and is not a patient record.
 #'
-#' @param cancer A cancer code with bundled models.
+#' @param cancer A cancer code with locally installed models.
 #' @param include_limited_evidence Use limited-evidence models when constructing
 #'   the synthetic across-model feature mean. The default is `FALSE`.
 #' @param foundation_model One of `TITAN`, `GigaSSL`, or `ProvGigaPath`.
@@ -681,7 +681,8 @@ example_pathofm_features <- function(cancer = "BRCA", foundation_model = "TITAN"
     foundation_model, cancer,
     include_limited_evidence = include_limited_evidence
   )
-  if (!nrow(models)) stop("No bundled models are available for ", cancer, ".", call. = FALSE)
+  if (!nrow(models)) stop("No predictable locally installed models are available for ",
+                          cancer, ".", call. = FALSE)
   means <- lapply(models$model_id, function(id) {
     .pathofm_read_model(id, foundation_model)$training_feature_mean
   })

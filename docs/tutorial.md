@@ -1,23 +1,27 @@
 # PathoFMPred quick tutorial
 
-## 1. Inspect the minimal public example
+## 1. Check for an authorized local collection
 
 ```r
 library(PathoFMPred)
 available_pathofm_models("GigaSSL", "COAD")
 ```
 
-The public package bundles only two small Giga-SSL COAD models. They are test
-fixtures for the software interface, not a complete model atlas.
+The CRAN-oriented source package bundles no fitted models. This listing is
+empty until a user installs an authorized collection.
 
-## 2. Download optional full public collections
+## 2. Install a collection supplied under its applicable terms
 
 ```r
-fetch_pathofmpred_models(c("GigaSSL", "ProvGigaPath"))
+fetch_pathofmpred_models(
+  foundation_model = "GigaSSL",
+  base_url = "https://authorized.example.org/release",
+  expected_sha256 = c(GigaSSL = "<SHA-256 supplied by the source>")
+)
 ```
 
-This is an explicit post-install operation. TITAN models are not available
-through the public downloader.
+The URL and digest are placeholders. The helper has no built-in model source
+and runs only when called. TITAN models are not available through it.
 
 ## 3. Predict with the representation you possess
 

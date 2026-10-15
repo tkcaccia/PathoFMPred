@@ -1,6 +1,6 @@
 library(PathoFMPred)
 
-# The public package includes a two-model Giga-SSL software fixture.
+# This example requires an authorized Giga-SSL collection installed locally.
 x <- example_pathofm_features("COAD", "GigaSSL")
 predictions <- predict_pathofm(
   cancer = "COAD", features = x, foundation_model = "GigaSSL",
@@ -8,6 +8,5 @@ predictions <- predict_pathofm(
 )
 head(predictions)
 
-# Full optional Giga-SSL and Prov-GigaPath collections are installed only after
-# the user explicitly requests them.
-# fetch_pathofmpred_models(c("GigaSSL", "ProvGigaPath"))
+# Obtain each collection under its applicable terms and install it locally.
+# No fitted object or model download source is included in the CRAN package.

@@ -1,13 +1,47 @@
-#' Read the bundled pathology-foundation-model registry
+#' Read registries from locally available model collections
 #'
-#' @return A data frame with one row per fitted cancer-endpoint model.
+#' The public package contains no fitted-model registry. This function reads
+#' metadata from collections that the user has installed under the applicable
+#' access terms. An empty data frame is returned when none is installed.
+#'
+#' @return A data frame with one row per locally available fitted model.
 #' @export
 pathofm_model_registry <- function() {
   path <- system.file("extdata", "model_registry.csv", package = "PathoFMPred")
-  if (!nzchar(path)) stop("The bundled model registry is unavailable.", call. = FALSE)
-  registry <- utils::read.csv(path, check.names = FALSE, stringsAsFactors = FALSE)
-  if (!"foundation_model" %in% names(registry)) registry$foundation_model <- "TITAN"
-  registry
+  if (nzchar(path)) {
+    registry <- utils::read.csv(path, check.names = FALSE,
+                                stringsAsFactors = FALSE)
+    if (!"foundation_model" %in% names(registry)) {
+      registry$foundation_model <- "TITAN"
+    }
+    return(registry)
+  }
+  candidates <- c("TITAN", "GigaSSL", "ProvGigaPath")
+  registries <- lapply(candidates, function(model) {
+    object <- try(.pathofm_load_object(model), silent = TRUE)
+    if (inherits(object, "try-error")) return(NULL)
+    registry <- object$registry
+    if (!"foundation_model" %in% names(registry)) {
+      registry$foundation_model <- model
+    }
+    registry
+  })
+  registries <- Filter(Negate(is.null), registries)
+  if (!length(registries)) {
+    return(data.frame(
+      model_id = character(), foundation_model = character(),
+      cancer_type = character(), endpoint = character(),
+      outcome_type = character(), family = character(),
+      model_evidence_tier = character(), stringsAsFactors = FALSE
+    ))
+  }
+  columns <- unique(unlist(lapply(registries, names), use.names = FALSE))
+  registries <- lapply(registries, function(registry) {
+    for (column in setdiff(columns, names(registry))) registry[[column]] <- NA
+    registry[, columns, drop = FALSE]
+  })
+  rownames(registries) <- NULL
+  do.call(rbind, registries)
 }
 
 .pathofm_predictable_mask <- function(registry) {
@@ -27,13 +61,14 @@ pathofm_model_registry <- function() {
   rep(FALSE, nrow(registry))
 }
 
-#' List foundation-model representations bundled with the package
+#' List locally available foundation-model representations
 #'
 #' @return A character vector. Availability means that at least one fitted
-#'   research model is bundled; it does not imply external validation.
+#'   research model collection is installed; it does not imply external
+#'   validation or permission to redistribute the collection.
 #' @export
 available_foundation_models <- function() {
-  candidates <- sort(unique(pathofm_model_registry()$foundation_model))
+  candidates <- c("TITAN", "GigaSSL", "ProvGigaPath")
   candidates[vapply(candidates, function(model) {
     !inherits(try(.pathofm_load_object(model), silent = TRUE), "try-error")
   }, logical(1))]

@@ -17,20 +17,13 @@ for (path in c("LICENSE", "LICENSE.md", "inst/licenses/MODEL_ACCESS.md")) {
 
 tracked <- system2("git", c("-C", root, "ls-files"), stdout = TRUE)
 if (!length(tracked)) stop("Could not enumerate tracked public-release files")
-relative_rds <- tracked[grepl("[.]rds$", tracked)]
-allowed_embedded <- file.path(
-  "inst", "models", "pathofmpred_gigassl_example.rds"
-)
-unexpected <- setdiff(relative_rds, allowed_embedded)
-if (length(unexpected)) {
+relative_rds <- tracked[grepl("[.]rds$", tracked) &
+                          file.exists(file.path(root, tracked))]
+if (length(relative_rds)) {
   stop(
-    "Public source tree contains an unapproved fitted RDS artifact: ",
-    paste(unexpected, collapse = ", ")
+    "Public source tree contains a fitted RDS artifact: ",
+    paste(relative_rds, collapse = ", ")
   )
-}
-
-if (any(grepl("titan", basename(relative_rds), ignore.case = TRUE))) {
-  stop("Public source tree must not contain a TITAN fitted object")
 }
 
 # Git tracking alone is insufficient: an ignored or untracked object anywhere
@@ -41,26 +34,12 @@ physical_rds <- list.files(
   recursive = TRUE, full.names = TRUE
 )
 physical_relative <- substring(physical_rds, nchar(root) + 2L)
-if (!setequal(physical_relative, allowed_embedded)) {
-  stop("Public inst/ contains an unexpected RDS object: ",
-       paste(setdiff(physical_relative, allowed_embedded), collapse = ", "))
+if (length(physical_relative)) {
+  stop("Public inst/ contains a fitted RDS object: ",
+       paste(physical_relative, collapse = ", "))
 }
-
-example_path <- file.path(root, allowed_embedded)
-if (!file.exists(example_path)) {
-  stop("The minimal Giga-SSL example collection is missing")
-}
-example <- readRDS(example_path)
-if (!identical(example$foundation_model, "GigaSSL") ||
-    length(example$feature_names) != 512L ||
-    length(example$models) != 2L ||
-    nrow(example$registry) != 2L ||
-    any(example$registry$foundation_model != "GigaSSL") ||
-    any(!startsWith(names(example$models), "GigaSSL__")) ||
-    any(vapply(example$models, function(model) {
-      !identical(model$foundation_model, "GigaSSL")
-    }, logical(1)))) {
-  stop("The embedded public example does not contain exactly two Giga-SSL models")
+if (file.exists(file.path(root, "inst", "extdata", "model_registry.csv"))) {
+  stop("The research atlas registry must not be bundled")
 }
 
 builder <- paste(readLines(file.path(root, "tools", "build_package_data.R"),
@@ -81,12 +60,12 @@ if (!grepl("Public package tree contains fitted", builder, fixed = TRUE)) {
 
 store <- paste(readLines(file.path(root, "R", "object_store.R"), warn = FALSE),
                collapse = "\n")
-required_store_text <- c(
-  "TITAN-derived fitted parameters are deliberately unavailable",
-  "GigaSSL = \"874b84cb040d7c955b96f95b29ee181c9056f5e40a3feda28171f942063d0745\"",
-  "ProvGigaPath = \"72868d9fb7562f3eafaf7cc287cb4e909e1767587662be07625c985a028da832\""
-)
-for (text in required_store_text) {
+if (grepl("releases/download/models-v", store, fixed = TRUE) ||
+    grepl("PathoFMPred.model_base_url", store, fixed = TRUE)) {
+  stop("Public package must not contain a default research-asset source")
+}
+for (text in c("expected_sha256", "missing(base_url)",
+               "missing(expected_sha256)")) {
   if (!grepl(text, store, fixed = TRUE)) {
     stop("Public object-store safeguard is missing: ", text)
   }

@@ -2,16 +2,15 @@
 % Please edit documentation in R/object_store.R
 \name{fetch_pathofmpred_models}
 \alias{fetch_pathofmpred_models}
-\title{Download optional full PathoFMPred model collections}
+\title{Download user-authorized PathoFMPred model collections}
 \usage{
 fetch_pathofmpred_models(
-  foundation_model = c("GigaSSL", "ProvGigaPath"),
+  foundation_model,
   destination = .pathofm_user_model_dir(),
-  base_url = getOption("PathoFMPred.model_base_url",
-    "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v3"),
+  base_url,
+  expected_sha256,
   overwrite = FALSE,
-  quiet = FALSE,
-  verify = TRUE
+  quiet = FALSE
 )
 }
 \arguments{
@@ -19,21 +18,24 @@ fetch_pathofmpred_models(
 
 \item{destination}{Directory in which model collections will be stored.}
 
-\item{base_url}{Release directory containing the model files. Advanced users
-may point this at an institutional mirror.}
+\item{base_url}{User-supplied HTTPS release directory, or a `file://` URL
+for an authorized local mirror. There is no package default.}
+
+\item{expected_sha256}{Named character vector containing the expected
+64-character SHA-256 digest for every requested representation. Obtain
+these digests independently from the authorized source.}
 
 \item{overwrite}{Replace an existing file.}
 
 \item{quiet}{Passed to [utils::download.file()].}
-
-\item{verify}{Verify the published SHA-256 digest before accepting a file.}
 }
 \value{
 Named paths to the downloaded model collections.
 }
 \description{
-Downloads occur only after an explicit user call. The public package does
-not download model files during installation, loading, checking, or vignette
-construction. TITAN-derived fitted parameters are deliberately unavailable
-through this function.
+The package does not provide model files, download URLs, or checksums. A
+download occurs only after the user supplies a source and its SHA-256 digest.
+Users must confirm that they may access and use the collection under its
+applicable terms. TITAN-derived objects are not supported by this helper;
+authorized local TITAN objects can be used directly.
 }

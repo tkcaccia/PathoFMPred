@@ -22,21 +22,22 @@ portable object for each pathology representation. The object contains fitted
 parameters, feature order, development metrics, and provenance. It does not
 contain the original feature or outcome rows.
 
-The public package contains only two small Giga-SSL models as executable
-examples. Full Giga-SSL and Prov-GigaPath collections are optional downloads
-that occur only when a user calls `fetch_pathofmpred_models()`. No model is
-downloaded during installation, package loading, checking, or vignette
-construction.
+The CRAN-oriented package contains no fitted model, atlas registry, patient
+rows, or slide embeddings. A user can fit a new collection from authorized
+input tables or load a collection obtained separately under its applicable
+terms. No model is downloaded during installation, package loading, checking,
+or vignette construction.
 
-TITAN-derived fitted parameters are not distributed in the public repository.
-Users may build a TITAN object locally after separately obtaining the TITAN
-features and accepting the upstream access terms. Do not redistribute the
-resulting object unless the TITAN rights holder has provided permission.
+No TITAN-, Giga-SSL- or Prov-GigaPath-derived fitted parameters are distributed
+in the public repository or the CRAN-oriented source package. Earlier public
+model releases have been withdrawn while rights are reviewed. Users may build
+an object locally after separately obtaining the representation features and
+outcome labels under their respective terms. Do not redistribute a resulting
+object without confirming the applicable permissions.
 
-The PathoFMPred source code is MIT licensed. Fitted objects, registry data and
-third-party inputs are not covered by that source-code grant. The complete
-asset-specific terms and required attributions are recorded in
-`inst/licenses/MODEL_ACCESS.md`.
+The PathoFMPred source code is MIT licensed. Separately obtained fitted
+objects and third-party inputs are not covered by that grant. The package
+licensing boundary is recorded in `inst/licenses/MODEL_ACCESS.md`.
 
 All supplied performance estimates are internal research estimates. They do
 not establish external validity, assay equivalence, or clinical utility.
@@ -47,22 +48,23 @@ objects that record a Git `RemoteSha` also retain their revision check. A
 CRAN installation does not have that Git field; new CRAN-built objects instead
 record `Repository: CRAN`.
 
-# Install optional public model collections
+# Use a collection from an authorized source
 
 ```{r fetch, eval=FALSE, purl=FALSE}
 library(PathoFMPred)
-fetch_pathofmpred_models(c("GigaSSL", "ProvGigaPath"))
+fetch_pathofmpred_models(
+  foundation_model = "GigaSSL",
+  base_url = "https://authorized.example.org/release",
+  expected_sha256 = c(GigaSSL = "<SHA-256 supplied by the source>")
+)
 available_foundation_models()
 ```
 
-An institutional mirror can be selected without changing package code:
-
-```{r mirror, eval=FALSE, purl=FALSE}
-fetch_pathofmpred_models(
-  "GigaSSL",
-  base_url = "https://github.com/tkcaccia/PathoFMPred/releases/download/models-v3"
-)
-```
+The URL and digest are placeholders. The helper has no built-in model source.
+It requires a user-supplied source and verifies the supplied checksum before
+accepting an object. A user can instead place an authorized
+`pathofmpred_gigassl.rds` or `pathofmpred_provgigapath.rds` in the directory
+returned by `tools::R_user_dir("PathoFMPred", which = "data")`.
 
 # Build a PathoFMPred object from a new representation
 
@@ -86,8 +88,8 @@ custom_object <- create_pathofmpred_object(
 )
 ```
 
-The fitted collection can then be applied directly without adding it to the
-package's bundled-model registry. Repeated rows in a new feature table are
+The fitted collection can then be applied directly without adding it to an
+atlas registry. Repeated rows in a new feature table are
 pooled with the aggregation rule stored in the object.
 
 ```{r predict-generic, eval=FALSE, purl=FALSE}
@@ -138,7 +140,25 @@ custom_object <- create_pathofmpred_object(
 PathoFMPred uses the installed fastPLS defaults. They can be overridden through
 `pathofmpred_control()` when a documented analysis requires different values.
 
-# Build the TITAN object locally
+# Build TITAN, Giga-SSL and Prov-GigaPath objects locally
+
+The following three recipes use the same package function. They require a
+patient-level outcome table with a unique `patient_id` column and at least
+101 IDs in common with the selected representation. The table shown below as
+`patient_outcomes.csv` is an **input that users must create** from properly
+licensed source data, not a file bundled with PathoFMPred. It should contain
+one cancer type only, an ID column and selected endpoint columns. Do not pass
+the cancer label or other metadata as an outcome. Repeat the fitting call for
+each cancer; the generic builder does not automatically stratify cancers. For the project
+endpoint definitions and source-acquisition map, see the companion
+[analysis repository](https://github.com/tkcaccia/pathology-foundation-model-atlas).
+Its `R/run_all.R` pipeline is needed to reproduce the published atlas rather
+than fit an analogous custom collection.
+
+The conversion commands shown here do not run during package installation or
+vignette construction. Run them only after acquiring the source files.
+
+## TITAN inputs and local fit
 
 The official TITAN TCGA slide representations are provided by the TITAN
 authors in the gated
@@ -181,9 +201,7 @@ is intentionally not executed while the vignette is built.
 titan_features <- read.csv(
   "TCGA_TITAN_features.csv", check.names = FALSE
 )
-endpoint_table <- read.csv(
-  "pathofmpred_patient_endpoints.csv", check.names = FALSE
-)
+endpoint_table <- read.csv("patient_outcomes.csv", check.names = FALSE)
 
 pathofmpred_titan <- create_pathofmpred_object(
   feature_table = titan_features,
@@ -199,7 +217,7 @@ pathofmpred_titan <- create_pathofmpred_object(
     method = "plssvd",
     binary_selection = "AUROC"
   ),
-  output_file = "pathofmpred_titan.rds"
+  output_file = "pathofmpred_titan_coad.rds"
 )
 
 titan_prediction <- predict_pathofmpred_object(
@@ -209,14 +227,96 @@ titan_prediction <- predict_pathofmpred_object(
 )
 ```
 
-Keep `pathofmpred_titan.rds` local or in the access-controlled
+Keep `pathofmpred_titan_coad.rds` local or in the access-controlled
 `tkcaccia/PathoFMPred-private` repository. It must not be added to the public
 `tkcaccia/PathoFMPred` repository under the current release policy.
 
-# Use the bundled Giga-SSL example
+## Giga-SSL inputs and local fit
 
-The minimal public fixture contains COAD APC mutation and MANTIS-score models.
-It demonstrates the interface but is not a complete atlas.
+The [Giga-SSL repository](https://github.com/trislaz/gigassl) links to the
+published TCGA slide embeddings in `TCGA_encoded_t5e1000`. Download the
+upstream `ids.npy` and `embeddings.npy` files from the source linked there.
+The companion analysis repository's
+`tools/convert_foundation_model_embeddings.py` converts them to 512 numeric
+feature columns and a slide `filename` column:
+
+```{bash, eval=FALSE}
+python tools/convert_foundation_model_embeddings.py \
+  --model gigassl \
+  --source /path/to/TCGA_encoded_t5e1000 \
+  --output GigaSSL_TCGA_features.csv.gz \
+  --manifest GigaSSL_conversion.json
+```
+
+```{r build-gigassl, eval=FALSE, purl=FALSE}
+gigassl_features <- read.csv("GigaSSL_TCGA_features.csv.gz",
+                              check.names = FALSE)
+gigassl_features$patient_id <- substr(gigassl_features$filename, 1L, 12L)
+gigassl_features$filename <- NULL
+
+gigassl_object <- create_pathofmpred_object(
+  feature_table = gigassl_features,
+  outcome_table = endpoint_table,
+  id_column = "patient_id",
+  foundation_model = "GigaSSL",
+  aggregation = "mean",
+  control = pathofmpred_control(
+    components = 1:20, outer_folds = 5, inner_folds = 5,
+    repeats = 5, method = "plssvd", binary_selection = "AUROC"
+  ),
+  output_file = "pathofmpred_gigassl_coad.rds"
+)
+```
+
+## Prov-GigaPath inputs and local fit
+
+Obtain the Parquet file from the
+[TCGA Prov-GigaPath embedding dataset](https://huggingface.co/datasets/seandavis/tcga_provgigapath_embeddings)
+under its stated terms. The same conversion script selects slide-encoder
+layer index 13, verifies exact duplicate slide vectors and retains one row
+per slide. It produces 768 numeric feature columns.
+
+```{bash, eval=FALSE}
+python tools/convert_foundation_model_embeddings.py \
+  --model provgigapath \
+  --source /path/to/tcga_provgigapath_embeddings.parquet \
+  --output ProvGigaPath_TCGA_final_layer_features.csv.gz \
+  --manifest ProvGigaPath_conversion.json \
+  --provgigapath-layer 13
+```
+
+```{r build-provgigapath, eval=FALSE, purl=FALSE}
+prov_features <- read.csv("ProvGigaPath_TCGA_final_layer_features.csv.gz",
+                          check.names = FALSE)
+prov_features$patient_id <- substr(prov_features$filename, 1L, 12L)
+prov_features$filename <- NULL
+
+prov_object <- create_pathofmpred_object(
+  feature_table = prov_features,
+  outcome_table = endpoint_table,
+  id_column = "patient_id",
+  foundation_model = "ProvGigaPath",
+  aggregation = "mean",
+  control = pathofmpred_control(
+    components = 1:20, outer_folds = 5, inner_folds = 5,
+    repeats = 5, method = "plssvd", binary_selection = "AUROC"
+  ),
+  output_file = "pathofmpred_provgigapath_coad.rds"
+)
+```
+
+Before fitting, verify that every extracted ID is a valid TCGA participant
+barcode and that the outcome table uses the same ID level. Repeated slide rows
+are pooled within patient, so slides from one participant do not create extra
+training observations. The returned `data_audit` records unmatched IDs and
+outcome-specific missingness. Keep the three fitted objects local unless
+their redistribution rights are established in writing.
+
+# Use an authorized atlas collection
+
+The following example works after a Giga-SSL research collection has been
+installed separately under its applicable terms. It is not executable from a
+fresh CRAN installation.
 
 ```{r example, eval=FALSE, purl=FALSE}
 models <- available_pathofm_models("GigaSSL", cancer = "COAD")

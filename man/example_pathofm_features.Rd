@@ -14,7 +14,7 @@ example_pathofm_features(
 example_titan_features(cancer = "BRCA", include_limited_evidence = FALSE)
 }
 \arguments{
-\item{cancer}{A cancer code with bundled models.}
+\item{cancer}{A cancer code with locally installed models.}
 
 \item{foundation_model}{One of `TITAN`, `GigaSSL`, or `ProvGigaPath`.}
 

@@ -51,3 +51,9 @@ A settings list for [create_pathofmpred_object()].
 \description{
 Define model-development settings
 }
+\examples{
+settings <- pathofmpred_control(
+  components = 1:3, outer_folds = 3, inner_folds = 3, seed = 42
+)
+settings$components
+}

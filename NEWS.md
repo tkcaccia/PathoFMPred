@@ -1,3 +1,18 @@
+# PathoFMPred 0.5.0
+
+- Prepared a code-only CRAN source package. It no longer bundles fitted model
+  objects, the research atlas registry, or prediction-reference data.
+- Atlas functions read registries from locally installed, user-authorized
+  collections. The generic object builder and predictor remain available.
+- Removed the built-in research-asset URL and digests. The optional download
+  helper now requires a user-supplied source and SHA-256 digest.
+- Clarified that the MIT package license does not cover separately obtained
+  foundation-model outputs or fitted collections.
+- Withdrew the earlier public model releases pending redistribution-rights
+  review. The reference objects remain in the access-controlled private
+  repository, and the vignette documents how to fit local objects from
+  authorized inputs for all three representations.
+
 # PathoFMPred 0.4.0
 
 - Rebuilt the fitted-object collections and internal performance metadata with
