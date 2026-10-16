@@ -18,7 +18,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 # Scope and distribution
 
 PathoFMPred stores many cancer-specific PLS regression and PLS-LDA fits in one
-portable object for each pathology representation. The object contains fitted
+portable object for each pathology slide representation. The object contains fitted
 parameters, feature order, development metrics, and provenance. It does not
 contain the original feature or outcome rows.
 
@@ -334,5 +334,7 @@ prediction[, c("endpoint", "outcome_type", "prediction",
 ```
 
 Binary scores are uncalibrated discriminant scores, not probabilities. Any
-reference rank is a rank within TCGA repeated out-of-fold predictions, not a
-probability or clinical-risk estimate.
+reference rank is a rank within the model's internal TCGA out-of-fold score
+distribution, not a probability or clinical-risk estimate. The metadata
+distinguish the primary matched-cohort estimate from a five-repeat estimate;
+the latter is missing when repeats were not performed for that representation.

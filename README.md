@@ -1,7 +1,7 @@
 # PathoFMPred
 
 PathoFMPred builds and applies portable collections of cancer-specific PLS
-regression and PLS-LDA models from pathology foundation-model representations.
+regression and PLS-LDA models from pathology foundation-model slide representations.
 It links feature and outcome tables by an explicit patient identifier, pools
 repeated slide rows at patient level, performs nested cross-validation, and
 fits a final model for each eligible outcome.
@@ -111,7 +111,7 @@ examples for TITAN, Giga-SSL and Prov-GigaPath, including the official
 embedding sources, conversion script, patient-ID linkage and fitting calls.
 You must acquire each input under its own terms and prepare a patient-level
 outcome table from the cited molecular sources. The function
-`create_pathofmpred_object()` accepts any future representation with the same
+`create_pathofmpred_object()` accepts any future slide representation with the same
 ID and numeric-feature rules. A newly fitted collection is not necessarily
 identical to the atlas reference collection unless its input snapshot, target
 definitions, eligibility rules and fitting settings also match.
@@ -119,7 +119,7 @@ definitions, eligibility rules and fitting settings also match.
 ## TITAN policy
 
 The CRAN source package does not distribute `pathofmpred_titan.rds`. Users may
-obtain the official TCGA representations from the gated
+obtain the official TCGA slide representations from the gated
 [MahmoodLab/TITAN](https://huggingface.co/MahmoodLab/TITAN) repository and build
 their own object with `create_pathofmpred_object()`. The vignette documents the
 feature conversion and molecular, immune, pathway, aneuploidy, fusion, and MSI
