@@ -37,6 +37,12 @@ Models tested below the threshold never enter prediction or reporting.}
 }
 \value{
 A long data frame with one row per patient and applicable model.
+  For atlas collections, fields prefixed `matched_tss_` describe the
+  representation-specific sensitivity analysis that held complete TCGA
+  tissue-source-site codes apart. `repeated_auc` and `repeated_pr_auc` are
+  missing when five-repeat validation was not performed for that model;
+  they are never filled with a primary-screen estimate. These internal
+  performance fields do not validate an individual prediction.
 }
 \description{
 Multiple rows with the same `patient_id` are interpreted as multiple slides

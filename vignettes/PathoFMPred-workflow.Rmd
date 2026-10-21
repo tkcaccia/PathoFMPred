@@ -28,12 +28,9 @@ input tables or load a collection obtained separately under its applicable
 terms. No model is downloaded during installation, package loading, checking,
 or vignette construction.
 
-No TITAN-, Giga-SSL- or Prov-GigaPath-derived fitted parameters are distributed
-in the public repository or the CRAN-oriented source package. Earlier public
-model releases have been withdrawn while rights are reviewed. Users may build
-an object locally after separately obtaining the representation features and
-outcome labels under their respective terms. Do not redistribute a resulting
-object without confirming the applicable permissions.
+The public package distributes no TITAN-, Giga-SSL- or Prov-GigaPath-derived
+fits. Users may build objects locally from authorized inputs; redistribution
+requires separate permission.
 
 The PathoFMPred source code is MIT licensed. Separately obtained fitted
 objects and third-party inputs are not covered by that grant. The package
@@ -42,11 +39,10 @@ licensing boundary is recorded in `inst/licenses/MODEL_ACCESS.md`.
 All supplied performance estimates are internal research estimates. They do
 not establish external validity, assay equivalence, or clinical utility.
 
-PathoFMPred checks the fastPLS version and source repository recorded in each
-new fitted object against the installed package before inference. Legacy
-objects that record a Git `RemoteSha` also retain their revision check. A
-CRAN installation does not have that Git field; new CRAN-built objects instead
-record `Repository: CRAN`.
+PathoFMPred checks that the installed fastPLS version matches the version
+recorded in each fitted object before inference. The model metadata also
+records software provenance, but installation from CRAN or another source does
+not change the prediction rule when the package version is the same.
 
 # Use a collection from an authorized source
 
@@ -320,7 +316,7 @@ fresh CRAN installation.
 
 ```{r example, eval=FALSE, purl=FALSE}
 models <- available_pathofm_models("GigaSSL", cancer = "COAD")
-models[, c("family", "endpoint", "outcome_type", "n")]
+models[, c("endpoint", "outcome_type", "n")]
 
 x <- example_pathofm_features("COAD", foundation_model = "GigaSSL")
 prediction <- predict_pathofm(
@@ -329,12 +325,9 @@ prediction <- predict_pathofm(
   foundation_model = "GigaSSL",
   patient_id = "software_example"
 )
-prediction[, c("endpoint", "outcome_type", "prediction",
-               "predicted_class", "lda_score")]
+prediction[, c("endpoint", "prediction", "predicted_class", "lda_score")]
 ```
 
-Binary scores are uncalibrated discriminant scores, not probabilities. Any
-reference rank is a rank within the model's internal TCGA out-of-fold score
-distribution, not a probability or clinical-risk estimate. The metadata
-distinguish the primary matched-cohort estimate from a five-repeat estimate;
-the latter is missing when repeats were not performed for that representation.
+Binary scores and reference ranks are not probabilities or clinical-risk
+estimates. Metadata distinguish primary matched-cohort performance from
+five-repeat estimates; the latter are absent when repeats were not run.

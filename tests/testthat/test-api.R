@@ -17,46 +17,18 @@ test_that("atlas examples require an authorized locally installed collection", {
                "No predictable")
 })
 
-test_that("runtime validation separates required version from optional Git metadata", {
+test_that("runtime validation requires the recorded fastPLS version", {
   validator <- getFromNamespace(".validate_runtime", "PathoFMPred")
-  state <- getFromNamespace(".pathofmpred_runtime_state", "PathoFMPred")
   expect_error(
-    validator(list(
-      model_id = "runtime_fixture", fastPLS_version = "0.0.0",
-      fastPLS_remote_sha = character()
-    )),
+    validator(list(model_id = "runtime_fixture", fastPLS_version = "0.0.0")),
     "requires fastPLS 0.0.0"
   )
-  expect_error(
-    validator(list(
-      model_id = "runtime_fixture",
-      fastPLS_version = as.character(utils::packageVersion("fastPLS")),
-      fastPLS_repository = "not-the-installed-source",
-      fastPLS_remote_sha = NA_character_
-    )),
-    "requires fastPLS from"
-  )
-
-  expected_sha <- "b518f75285c387632c2443a0c0989d75c9dcda48"
-  artifact <- list(
+  expect_silent(validator(list(
     model_id = "runtime_fixture",
     fastPLS_version = as.character(utils::packageVersion("fastPLS")),
-    fastPLS_remote_sha = expected_sha
-  )
-  installed_sha <- as.character(
-    utils::packageDescription("fastPLS")$RemoteSha
-  )
-  if (length(installed_sha) && !is.na(installed_sha) && nzchar(installed_sha)) {
-    if (identical(installed_sha, expected_sha)) {
-      expect_silent(validator(artifact))
-    } else {
-      expect_error(validator(artifact), "requires fastPLS Git revision")
-    }
-  } else {
-    state$missing_sha_warned <- FALSE
-    expect_warning(validator(artifact), "cannot verify the recorded Git revision")
-    expect_silent(validator(artifact))
-  }
+    fastPLS_repository = "another-installation-source",
+    fastPLS_remote_sha = "another-revision"
+  )))
 })
 
 test_that("builder enforces ID rules, pools repeats, and reports missingness", {
@@ -171,6 +143,15 @@ test_that("builder requires and preserves the binary event-class meaning", {
                     c("mutated", "wild-type")))
   expect_true(all(grepl("not probability", prediction$score_interpretation,
                         fixed = TRUE)))
+
+  vector_label_object <- object
+  vector_label_object$models[[1L]]$class_labels <-
+    c(negative = "wild-type", positive = "mutated")
+  vector_label_prediction <- suppressWarnings(predict_pathofmpred_object(
+    vector_label_object, new_features, id_column = "patient_id"
+  ))
+  expect_equal(vector_label_prediction$predicted_class_label,
+               prediction$predicted_class_label)
 
   path <- tempfile(fileext = ".rds")
   saveRDS(object, path)

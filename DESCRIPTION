@@ -7,6 +7,7 @@ BugReports: https://github.com/tkcaccia/PathoFMPred/issues
 Authors@R: c(
     person("Aamilah", "Ismail", role = "aut"),
     person("Martin", "Ocharo", role = "aut"),
+    person("Giulia", "Canarutto", role = "aut"),
     person("Moussa Kassim", "Mohamed", role = "aut", email = "moussa.kassim@icgeb.org"),
     person("Dalia", "Ahmed", role = "aut", email = "dalia.ahmed@icgeb.org"),
     person("Brendon", "Price", role = "aut"),
@@ -36,7 +37,7 @@ Encoding: UTF-8
 Depends: R (>= 4.6.0)
 Imports:
     digest,
-    fastPLS (>= 0.3),
+    fastPLS (>= 0.4),
     ggplot2,
     rmarkdown,
     stats,

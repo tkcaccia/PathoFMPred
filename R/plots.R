@@ -19,20 +19,31 @@
   predictions[keep, , drop = FALSE]
 }
 
+.grouping_sensitive_mask <- function(predictions) {
+  if ("matched_tss_retained_primary_crossing" %in% names(predictions)) {
+    return(predictions$matched_tss_retained_primary_crossing %in% FALSE)
+  }
+  if ("site_robustness_status" %in% names(predictions)) {
+    return(grepl("not retained|site-sensitive", predictions$site_robustness_status,
+                 ignore.case = TRUE))
+  }
+  rep(FALSE, nrow(predictions))
+}
+
 .pathofm_colour <- function(predictions) {
   model <- if ("foundation_model" %in% names(predictions)) {
     unique(as.character(predictions$foundation_model))
   } else {
     "TITAN"
   }
-  colours <- c(TITAN = "#2C7FB8", GigaSSL = "#E07A3F",
+  colours <- c(TITAN = "#2F6DA1", GigaSSL = "#E68613",
                ProvGigaPath = "#2A9D8F")
   unname(colours[if (length(model) == 1L && model %in% names(colours)) model else "TITAN"])
 }
 
 #' Radar plot of continuous prediction percentiles
 #'
-#' @param predictions Output from [predict_titan()] for one patient.
+#' @param predictions Output from [predict_pathofm()] for one patient.
 #' @param max_endpoints Maximum number of endpoints, prioritising extremes.
 #' @return A ggplot object. Endpoint names and original model predictions are
 #'   placed at the outer radar corners to avoid overlap with the profile.
@@ -78,7 +89,7 @@ plot_titan_radar <- function(predictions, max_endpoints = 12L) {
   raw_label[duplicated_label] <- paste0(raw_label[duplicated_label], " [",
                                        d$family[duplicated_label], "]")
   d$label <- .short_endpoint(raw_label, 20L)
-  d$site_sensitive <- grepl("^site-sensitive", d$site_robustness_status)
+  d$site_sensitive <- .grouping_sensitive_mask(d)
   d$corner_label <- sprintf("%s %s", d$label,
                             formatC(d$prediction, digits = 4, format = "fg"))
   n <- nrow(d)
@@ -140,7 +151,7 @@ plot_titan_radar <- function(predictions, max_endpoints = 12L) {
     ggplot2::labs(
       title = "Continuous internally derived TCGA estimates",
       subtitle = paste(
-        "Only endpoints predictable for this cancer and representation are shown.",
+        "Only endpoints crossing the internal effect threshold are shown.",
         "Corner labels give original predictions."
       )
     ) +
@@ -155,7 +166,7 @@ plot_titan_radar <- function(predictions, max_endpoints = 12L) {
 
 #' Plot binary PLS-LDA outputs
 #'
-#' @param predictions Output from [predict_titan()] for one patient.
+#' @param predictions Output from [predict_pathofm()] for one patient.
 #' @return A ggplot object. Scores are displayed as TCGA out-of-fold score
 #'   ranks explicitly labelled "not probability".
 #' @export
@@ -168,7 +179,7 @@ plot_titan_binary <- function(predictions) {
   raw_label <- ifelse(duplicated(d$endpoint) | duplicated(d$endpoint, fromLast = TRUE),
                       paste0(d$endpoint, " [", d$family, "]"), d$endpoint)
   d$label <- .short_endpoint(raw_label, 38L)
-  d$site_sensitive <- grepl("^site-sensitive", d$site_robustness_status)
+  d$site_sensitive <- .grouping_sensitive_mask(d)
   d$label <- ifelse(d$site_sensitive,
                     paste0("[CODE-GROUPING-SENSITIVE] ", d$label), d$label)
   d$label <- paste0(d$label, "  (n=", d$training_n, "; +",

@@ -7,7 +7,7 @@
 plot_titan_binary(predictions)
 }
 \arguments{
-\item{predictions}{Output from [predict_titan()] for one patient.}
+\item{predictions}{Output from [predict_pathofm()] for one patient.}
 }
 \value{
 A ggplot object. Scores are displayed as TCGA out-of-fold score

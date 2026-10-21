@@ -1,46 +1,9 @@
-.pathofmpred_runtime_state <- new.env(parent = emptyenv())
-
 .validate_runtime <- function(artifact) {
   installed <- as.character(utils::packageVersion("fastPLS"))
   required <- as.character(artifact$fastPLS_version)
   if (nzchar(required) && !identical(installed, required)) {
     stop("Model ", artifact$model_id, " requires fastPLS ", required,
          "; installed version is ", installed, ".", call. = FALSE)
-  }
-  required_repository <- as.character(artifact$fastPLS_repository)
-  installed_repository <- as.character(utils::packageDescription("fastPLS")$Repository)
-  if (length(required_repository) && !is.na(required_repository) &&
-      nzchar(required_repository) &&
-      !identical(installed_repository, required_repository)) {
-    stop("Model ", artifact$model_id, " requires fastPLS from ",
-         required_repository, "; installed source is ",
-         if (length(installed_repository)) installed_repository else "unknown",
-         ".", call. = FALSE)
-  }
-  required_sha <- as.character(artifact$fastPLS_remote_sha)
-  installed_sha <- as.character(utils::packageDescription("fastPLS")$RemoteSha)
-  sha_required <- length(required_sha) && !is.na(required_sha) &&
-    nzchar(required_sha)
-  sha_available <- length(installed_sha) && !is.na(installed_sha) &&
-    nzchar(installed_sha)
-  if (sha_required && sha_available &&
-      !identical(installed_sha, required_sha)) {
-    stop(
-      "Model ", artifact$model_id, " requires fastPLS Git revision ",
-      required_sha, "; the installed package reports ", installed_sha,
-      ". Reinstall the recorded Git revision before inference.", call. = FALSE
-    )
-  }
-  if (sha_required && !sha_available &&
-      !isTRUE(.pathofmpred_runtime_state$missing_sha_warned)) {
-    warning(
-      "The installed fastPLS package reports no RemoteSha, so PathoFMPred ",
-      "cannot verify the recorded Git revision ", required_sha,
-      ". The required fastPLS version matches and inference will continue. ",
-      "For full provenance, install the recorded revision with an installer ",
-      "that preserves RemoteSha metadata.", call. = FALSE
-    )
-    .pathofmpred_runtime_state$missing_sha_warned <- TRUE
   }
 }
 
@@ -116,6 +79,12 @@
 #'   that still crossed the representation-specific matched effect threshold.
 #'   Models tested below the threshold never enter prediction or reporting.
 #' @return A long data frame with one row per patient and applicable model.
+#'   For atlas collections, fields prefixed `matched_tss_` describe the
+#'   representation-specific sensitivity analysis that held complete TCGA
+#'   tissue-source-site codes apart. `repeated_auc` and `repeated_pr_auc` are
+#'   missing when five-repeat validation was not performed for that model;
+#'   they are never filled with a primary-screen estimate. These internal
+#'   performance fields do not validate an individual prediction.
 #' @export
 predict_pathofm <- function(cancer, features,
                             foundation_model = c("TITAN", "GigaSSL", "ProvGigaPath"),
@@ -205,7 +174,7 @@ predict_pathofm <- function(cancer, features,
       class_labels <- artifact$class_labels
       cls_label <- if (!is.null(class_labels) &&
                        all(c("negative", "positive") %in% names(class_labels))) {
-        ifelse(cls == "1", class_labels$positive, class_labels$negative)
+        ifelse(cls == "1", class_labels[["positive"]], class_labels[["negative"]])
       } else {
         cls
       }
@@ -263,7 +232,10 @@ predict_pathofm <- function(cancer, features,
                info$limited_evidence_reason)
       )
     }
-    if (!is.na(info$site_robustness_warning) &&
+    matched_grouped_warning <- info_value("matched_tss_robustness_warning")
+    if (!is.na(matched_grouped_warning) && nzchar(matched_grouped_warning)) {
+      warnings <- c(warnings, matched_grouped_warning)
+    } else if (!is.na(info$site_robustness_warning) &&
         nzchar(info$site_robustness_warning)) {
       warnings <- c(warnings, info$site_robustness_warning)
     }
@@ -385,8 +357,12 @@ predict_pathofm <- function(cancer, features,
       repeated_sensitivity = info$repeated_sensitivity,
       repeated_specificity = info$repeated_specificity,
       repeated_balanced_accuracy = info$repeated_balanced_accuracy,
-      repeated_auc = info$repeated_auc,
-      repeated_pr_auc = info$binary_pr_auc,
+      repeated_auc = if (identical(info_value("repeated_estimate_label"),
+                                   "not performed for this representation"))
+        NA_real_ else info$repeated_auc,
+      repeated_pr_auc = if (identical(info_value("repeated_estimate_label"),
+                                      "not performed for this representation"))
+        NA_real_ else info$binary_pr_auc,
       ppv_tcga_prevalence = info$binary_ppv_tcga_prevalence,
       npv_tcga_prevalence = info$binary_npv_tcga_prevalence,
       binary_minimum_outer_test_positive =
@@ -441,6 +417,16 @@ predict_pathofm <- function(cancer, features,
       site_grouped_maximum_test_positive = info$site_grouped_maximum_test_positive,
       site_grouped_inner_site_separation = info$site_grouped_inner_site_separation,
       matched_tss_n_codes = info$matched_tss_n_codes,
+      matched_tss_grouped_metric_name = info_value("matched_tss_grouped_metric_name"),
+      matched_tss_grouped_operating_metric =
+        info_value("matched_tss_grouped_operating_metric"),
+      matched_tss_grouped_auroc = info_value("matched_tss_grouped_auroc"),
+      matched_tss_grouped_minus_matched_effect =
+        info_value("matched_tss_grouped_minus_matched_effect"),
+      matched_tss_retained_primary_crossing =
+        info_value("matched_tss_retained_primary_crossing"),
+      matched_tss_validation_scope = info_value("matched_tss_validation_scope"),
+      matched_tss_robustness_warning = matched_grouped_warning,
       matched_tss_realized_outer_folds = info$matched_tss_realized_outer_folds,
       matched_tss_outer_test_n_min = info$matched_tss_outer_test_n_min,
       matched_tss_outer_test_n_max = info$matched_tss_outer_test_n_max,
@@ -600,7 +586,7 @@ predict_pathofmpred_object <- function(
       labels <- artifact$class_labels
       class_label <- if (!is.null(labels) &&
                           all(c("negative", "positive") %in% names(labels))) {
-        ifelse(class01 == "1", labels$positive, labels$negative)
+        ifelse(class01 == "1", labels[["positive"]], labels[["negative"]])
       } else class01
       value <- rep(NA_real_, length(score))
     } else {

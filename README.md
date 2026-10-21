@@ -27,9 +27,9 @@ install.packages("fastPLS", repos = "https://cloud.r-project.org")
 remotes::install_github("tkcaccia/PathoFMPred", dependencies = TRUE)
 ```
 
-PathoFMPred checks the fastPLS provenance stored with each fitted model. The
-current reference collections use fastPLS 0.3 from CRAN. Older collections
-retain their Git revision metadata and may trigger a provenance warning.
+PathoFMPred checks the fastPLS version recorded with each fitted model. The
+current matched-atlas analysis uses fastPLS 0.4. A model built under an older
+version should not be mixed silently with the refreshed atlas results.
 
 ## Use an authorized model collection
 

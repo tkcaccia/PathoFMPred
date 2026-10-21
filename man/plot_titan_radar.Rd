@@ -7,7 +7,7 @@
 plot_titan_radar(predictions, max_endpoints = 12L)
 }
 \arguments{
-\item{predictions}{Output from [predict_titan()] for one patient.}
+\item{predictions}{Output from [predict_pathofm()] for one patient.}
 
 \item{max_endpoints}{Maximum number of endpoints, prioritising extremes.}
 }
