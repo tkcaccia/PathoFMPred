@@ -164,6 +164,7 @@ test_that("builder requires and preserves the binary event-class meaning", {
 
 test_that("user-supplied fetch excludes TITAN and verifies checksums", {
   expect_error(fetch_pathofmpred_models("TITAN"), "arg")
+  expect_error(fetch_pathofmpred_models("ProvGigaPath"), "destination")
   mirror <- file.path(tempdir(), "pathofmpred-mirror")
   destination <- file.path(tempdir(), "pathofmpred-download")
   dir.create(mirror, showWarnings = FALSE)
@@ -207,4 +208,11 @@ test_that("user-supplied fetch excludes TITAN and verifies checksums", {
     ),
     "SHA-256 verification failed"
   )
+})
+
+test_that("report creation requires an explicit output path", {
+  expect_error(pathofm_sample_report("COAD", data.frame(x = 1)),
+               "output_file")
+  expect_error(titan_sample_report("COAD", data.frame(x = 1)),
+               "output_file")
 })

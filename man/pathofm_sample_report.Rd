@@ -10,7 +10,7 @@ pathofm_sample_report(
   features,
   foundation_model = c("TITAN", "GigaSSL", "ProvGigaPath"),
   patient_id = NULL,
-  output_file = "pathofm_prediction_report",
+  output_file = NULL,
   format = c("html", "pdf", "both"),
   clinical_context = NULL,
   include_limited_evidence = FALSE,
@@ -21,7 +21,7 @@ titan_sample_report(
   cancer,
   features,
   patient_id = NULL,
-  output_file = "titan_prediction_report",
+  output_file = NULL,
   format = c("html", "pdf", "both"),
   clinical_context = NULL,
   include_limited_evidence = FALSE,
@@ -37,7 +37,8 @@ titan_sample_report(
 
 \item{patient_id}{Optional patient/sample identifier for all rows.}
 
-\item{output_file}{File stem or `.html`/`.pdf` path.}
+\item{output_file}{Explicit file stem or `.html`/`.pdf` path. Required;
+no report is written unless the caller chooses a destination.}
 
 \item{format}{One of `html`, `pdf`, or `both`.}
 

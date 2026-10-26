@@ -73,7 +73,7 @@ validate_pathofmpred_object <- function(object) {
         )
       } else {
         if (identical(foundation_model, "ProvGigaPath")) {
-          "Call fetch_pathofmpred_models(\"ProvGigaPath\") to download the optional verified research collection, or provide an authorized local object."
+          "Call fetch_pathofmpred_models(\"ProvGigaPath\", destination = <your chosen directory>) to download the optional verified research collection, or provide an authorized local object."
         } else {
           paste0(
             "Obtain an authorized collection, then place ",
@@ -115,7 +115,9 @@ validate_pathofmpred_object <- function(object) {
 #' TITAN-derived objects are not downloadable through this helper.
 #'
 #' @param foundation_model `ProvGigaPath` or `GigaSSL`.
-#' @param destination Directory in which model collections will be stored.
+#' @param destination Explicit directory in which model collections will be
+#'   stored. No directory is created unless the function is called with this
+#'   argument.
 #' @param base_url Optional HTTPS release directory, or a `file://` URL for
 #'   an authorized local mirror. The pinned Prov-GigaPath release is the
 #'   default when this is omitted.
@@ -128,7 +130,7 @@ validate_pathofmpred_object <- function(object) {
 #' @export
 fetch_pathofmpred_models <- function(
     foundation_model = "ProvGigaPath",
-    destination = .pathofm_user_model_dir(),
+    destination = NULL,
     base_url = NULL,
     expected_sha256 = NULL,
     overwrite = FALSE, quiet = FALSE) {
@@ -138,9 +140,9 @@ fetch_pathofmpred_models <- function(
   pinned <- list(
     base_url = paste0(
       "https://github.com/tkcaccia/PathoFMPred/releases/download/",
-      "prov-v0.4.0-20261026"
+      "prov-v0.4.0-chol-20261026"
     ),
-    sha256 = "56a4b1fc88c4f82813ba7e563a0a63852b6f6eadb811e6e1c5ce77a597539535"
+    sha256 = "c0918ca947d0fbde89faec2a51b06288d5f75b407372a53e8c89acabe7e59dd4"
   )
   if (is.null(base_url) && identical(foundation_model, "ProvGigaPath")) {
     base_url <- pinned$base_url
@@ -159,6 +161,12 @@ fetch_pathofmpred_models <- function(
       anyNA(expected_sha256[foundation_model]) ||
       any(!grepl("^[0-9a-fA-F]{64}$", expected_sha256[foundation_model]))) {
     stop("expected_sha256 must contain a valid named SHA-256 digest for every requested representation.",
+         call. = FALSE)
+  }
+  if (is.null(destination) || length(destination) != 1L ||
+      !is.character(destination) || is.na(destination) ||
+      !nzchar(destination)) {
+    stop("destination must be an explicit directory selected by the caller.",
          call. = FALSE)
   }
   dir.create(destination, recursive = TRUE, showWarnings = FALSE)

@@ -6,7 +6,7 @@
 \usage{
 fetch_pathofmpred_models(
   foundation_model = "ProvGigaPath",
-  destination = .pathofm_user_model_dir(),
+  destination = NULL,
   base_url = NULL,
   expected_sha256 = NULL,
   overwrite = FALSE,
@@ -16,7 +16,9 @@ fetch_pathofmpred_models(
 \arguments{
 \item{foundation_model}{`ProvGigaPath` or `GigaSSL`.}
 
-\item{destination}{Directory in which model collections will be stored.}
+\item{destination}{Explicit directory in which model collections will be
+stored. No directory is created unless the function is called with this
+argument.}
 
 \item{base_url}{Optional HTTPS release directory, or a `file://` URL for
 an authorized local mirror. The pinned Prov-GigaPath release is the

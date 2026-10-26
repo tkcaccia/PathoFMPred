@@ -35,18 +35,24 @@ version should not be mixed silently with the refreshed atlas results.
 
 ```r
 library(PathoFMPred)
-fetch_pathofmpred_models("ProvGigaPath")
+model_dir <- file.path(tempdir(), "pathofmpred-models")
+fetch_pathofmpred_models("ProvGigaPath", destination = model_dir)
+options(PathoFMPred.model_dir = model_dir)
 available_pathofm_models("ProvGigaPath", cancer = "COAD")
 ```
 
 The function downloads the separately licensed, fastPLS 0.4 fitted collection
 only when called. The release URL and SHA-256 digest are pinned in the package.
-The collection contains 618 cancer-specific Prov-GigaPath models and aggregate
+The collection contains 620 cancer-specific Prov-GigaPath models and aggregate
 metadata, but no slide embeddings, patient records, or patient-level reference
 scores. Reference ranks are therefore unavailable from this public collection.
+Two CHOL objects were fitted under an exploratory exception requiring at least
+10 labelled patients for continuous outcomes or 10 patients per binary class.
+They are excluded from default inference and require an explicit limited-evidence
+opt-in. The usual eligibility limits were not changed for other cancers.
 Nothing is downloaded during installation, package loading, checking, or
-vignette construction. The verified object is stored in the user's R data
-directory. TITAN and Giga-SSL collections require separate authorized access
+vignette construction. The caller chooses where the verified object is stored.
+TITAN and Giga-SSL collections require separate authorized access
 or local construction from the published source tables.
 
 ## Build a model collection
@@ -74,7 +80,7 @@ object <- create_pathofmpred_object(
     method = "plssvd",
     binary_selection = "AUROC"
   ),
-  output_file = "pathofmpred_my_representation.rds"
+  output_file = file.path(tempdir(), "pathofmpred_my_representation.rds")
 )
 
 new_features <- read.csv("new_slide_features.csv", check.names = FALSE)
@@ -132,7 +138,9 @@ CRAN package licence.
 ```r
 library(PathoFMPred)
 
-fetch_pathofmpred_models("ProvGigaPath")
+model_dir <- file.path(tempdir(), "pathofmpred-models")
+fetch_pathofmpred_models("ProvGigaPath", destination = model_dir)
+options(PathoFMPred.model_dir = model_dir)
 available_pathofm_models("ProvGigaPath", "COAD")
 x <- example_pathofm_features("COAD", "ProvGigaPath")
 pred <- predict_pathofm(

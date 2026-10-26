@@ -22,8 +22,9 @@ Authors@R: c(
     person("Stefano", "Cacciatore", role = c("aut", "cre"),
       email = "tkcaccia@gmail.com")
   )
-Description: Builds and applies portable cancer-specific partial least-squares
-    regression and PLS-LDA model collections from pathology foundation-model
+Description: Builds and applies portable cancer-specific partial least squares
+    (PLS) regression and partial least squares with linear discriminant analysis
+    (PLS-LDA) model collections from pathology foundation-model
     representations. Feature and outcome tables are linked by explicit patient
     identifiers, repeated slide rows are pooled at patient level, and model
     development uses nested cross-validation before final fitting. The source
@@ -31,8 +32,9 @@ Description: Builds and applies portable cancer-specific partial least-squares
     patient-level data, or atlas registry. Users may download a separately
     licensed, checksum-verified Prov-GigaPath collection after installation,
     or load authorized collections from local files. Outputs are research
-    estimates without
-    external-validation or clinical-use claims.
+    estimates without external-validation or clinical-use claims. The methods
+    build on Wold et al. (2001) <doi:10.1016/S0169-7439(01)00155-1> and
+    Barker and Rayens (2003) <doi:10.1002/cem.785>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.6.0)

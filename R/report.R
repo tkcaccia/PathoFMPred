@@ -4,7 +4,8 @@
 #' @param features One or more slide-feature rows for one patient.
 #' @param foundation_model One of `TITAN`, `GigaSSL`, or `ProvGigaPath`.
 #' @param patient_id Optional patient/sample identifier for all rows.
-#' @param output_file File stem or `.html`/`.pdf` path.
+#' @param output_file Explicit file stem or `.html`/`.pdf` path. Required;
+#'   no report is written unless the caller chooses a destination.
 #' @param format One of `html`, `pdf`, or `both`.
 #' @param clinical_context Optional named list with `shared_features`,
 #'   `pathology`, and `source` character fields. This information
@@ -18,13 +19,19 @@
 pathofm_sample_report <- function(cancer, features,
                                   foundation_model = c("TITAN", "GigaSSL", "ProvGigaPath"),
                                   patient_id = NULL,
-                                  output_file = "pathofm_prediction_report",
+                                  output_file = NULL,
                                   format = c("html", "pdf", "both"),
                                   clinical_context = NULL,
                                   include_limited_evidence = FALSE,
                                   quiet = TRUE) {
   foundation_model <- match.arg(foundation_model)
   format <- match.arg(format)
+  if (is.null(output_file) || length(output_file) != 1L ||
+      !is.character(output_file) || is.na(output_file) ||
+      !nzchar(output_file)) {
+    stop("output_file must be an explicit path selected by the caller.",
+         call. = FALSE)
+  }
   if (length(unique(toupper(cancer))) != 1L) stop("An output must contain one cancer type.", call. = FALSE)
   if (is.null(patient_id)) patient_id <- rep("sample", nrow(as.data.frame(features)))
   if (length(unique(patient_id)) != 1L) stop("An output must contain one patient_id.", call. = FALSE)
@@ -43,6 +50,17 @@ pathofm_sample_report <- function(cancer, features,
   )
   template <- system.file("rmarkdown", "templates", "pathofm-report", "skeleton", "skeleton.Rmd", package = "PathoFMPred")
   if (!nzchar(template)) stop("Report template is unavailable.", call. = FALSE)
+  render_dir <- tempfile("pathofm-report-", tmpdir = tempdir())
+  dir.create(file.path(render_dir, "skeleton"), recursive = TRUE)
+  dir.create(file.path(render_dir, "resources"))
+  on.exit(unlink(render_dir, recursive = TRUE), add = TRUE)
+  render_input <- file.path(render_dir, "skeleton", "report.Rmd")
+  report_css <- file.path(dirname(dirname(template)), "resources", "report.css")
+  if (!file.copy(template, render_input) ||
+      !file.copy(report_css, file.path(render_dir, "resources", "report.css"))) {
+    stop("Could not prepare the report template in a temporary directory.",
+         call. = FALSE)
+  }
   stem <- sub("\\.(html|pdf)$", "", output_file, ignore.case = TRUE)
   formats <- if (format == "both") c("html", "pdf") else format
   outputs <- character(length(formats))
@@ -50,7 +68,7 @@ pathofm_sample_report <- function(cancer, features,
     extension <- formats[i]
     out <- paste0(basename(stem), ".", extension)
     outputs[i] <- rmarkdown::render(
-      template, output_format = if (extension == "html") "html_document" else "pdf_document",
+      render_input, output_format = if (extension == "html") "html_document" else "pdf_document",
       output_file = out, output_dir = dirname(stem),
       params = list(predictions = pred, sample_id = unique(patient_id),
                     cancer = unique(toupper(cancer)),
@@ -64,7 +82,7 @@ pathofm_sample_report <- function(cancer, features,
 #' @rdname pathofm_sample_report
 #' @export
 titan_sample_report <- function(cancer, features, patient_id = NULL,
-                                output_file = "titan_prediction_report",
+                                output_file = NULL,
                                 format = c("html", "pdf", "both"),
                                 clinical_context = NULL,
                                 include_limited_evidence = FALSE,

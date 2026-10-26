@@ -32,6 +32,12 @@ features for `foundation_model`.}
 that still crossed the representation-specific matched effect threshold.
 Models tested below the threshold never enter prediction or reporting.}
 }
+\value{
+A `pathofm_predictions` data frame with one row for each patient and
+  available TITAN endpoint. Continuous rows contain predictions in the
+  recorded outcome scale. Binary rows contain an uncalibrated discriminant
+  score and a class call; the score is not a probability.
+}
 \description{
 Backward-compatible wrapper for [predict_pathofm()] with
 `foundation_model = "TITAN"`.

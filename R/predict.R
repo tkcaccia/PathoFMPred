@@ -636,6 +636,10 @@ predict_pathofmpred_object <- function(
 #' Backward-compatible wrapper for [predict_pathofm()] with
 #' `foundation_model = "TITAN"`.
 #' @inheritParams predict_pathofm
+#' @return A `pathofm_predictions` data frame with one row for each patient and
+#'   available TITAN endpoint. Continuous rows contain predictions in the
+#'   recorded outcome scale. Binary rows contain an uncalibrated discriminant
+#'   score and a class call; the score is not a probability.
 #' @export
 predict_titan <- function(cancer, features, patient_id = NULL,
                           outcome_type = c("continuous", "binary"),

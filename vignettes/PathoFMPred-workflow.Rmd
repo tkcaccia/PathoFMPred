@@ -49,13 +49,15 @@ not change the prediction rule when the package version is the same.
 
 ```{r fetch, eval=FALSE, purl=FALSE}
 library(PathoFMPred)
-fetch_pathofmpred_models("ProvGigaPath")
+model_dir <- file.path(tempdir(), "pathofmpred-models")
+fetch_pathofmpred_models("ProvGigaPath", destination = model_dir)
+options(PathoFMPred.model_dir = model_dir)
 available_foundation_models()
 ```
 
 The helper verifies the pinned SHA-256 digest before installing the separately
-licensed object in the user's R data directory. The public Prov-GigaPath
-collection contains 618 fitted models, but no patient-level prediction
+licensed object in the directory selected by the caller. The public Prov-GigaPath
+collection contains 620 fitted models, but no patient-level prediction
 reference scores; its reference ranks are unavailable. Giga-SSL requires an
 explicit authorized source URL and digest, or a locally created collection.
 No download occurs while building this vignette.
@@ -78,7 +80,7 @@ custom_object <- create_pathofmpred_object(
   id_column = "patient_id",
   foundation_model = "my_future_representation",
   aggregation = "mean",
-  output_file = "pathofmpred_my_future_representation.rds"
+  output_file = file.path(tempdir(), "pathofmpred_my_future_representation.rds")
 )
 ```
 
@@ -211,7 +213,7 @@ pathofmpred_titan <- create_pathofmpred_object(
     method = "plssvd",
     binary_selection = "AUROC"
   ),
-  output_file = "pathofmpred_titan_coad.rds"
+  output_file = file.path(tempdir(), "pathofmpred_titan_coad.rds")
 )
 
 titan_prediction <- predict_pathofmpred_object(
@@ -258,7 +260,7 @@ gigassl_object <- create_pathofmpred_object(
     components = 1:20, outer_folds = 5, inner_folds = 5,
     repeats = 5, method = "plssvd", binary_selection = "AUROC"
   ),
-  output_file = "pathofmpred_gigassl_coad.rds"
+  output_file = file.path(tempdir(), "pathofmpred_gigassl_coad.rds")
 )
 ```
 
@@ -295,7 +297,7 @@ prov_object <- create_pathofmpred_object(
     components = 1:20, outer_folds = 5, inner_folds = 5,
     repeats = 5, method = "plssvd", binary_selection = "AUROC"
   ),
-  output_file = "pathofmpred_provgigapath_coad.rds"
+  output_file = file.path(tempdir(), "pathofmpred_provgigapath_coad.rds")
 )
 ```
 
@@ -313,7 +315,9 @@ Prov-GigaPath research collection. It is not executable from a fresh CRAN
 installation until the download function has been called.
 
 ```{r example, eval=FALSE, purl=FALSE}
-fetch_pathofmpred_models("ProvGigaPath")
+model_dir <- file.path(tempdir(), "pathofmpred-models")
+fetch_pathofmpred_models("ProvGigaPath", destination = model_dir)
+options(PathoFMPred.model_dir = model_dir)
 models <- available_pathofm_models("ProvGigaPath", cancer = "COAD")
 models[, c("endpoint", "outcome_type", "n")]
 
