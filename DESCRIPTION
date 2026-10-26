@@ -28,9 +28,10 @@ Description: Builds and applies portable cancer-specific partial least-squares
     identifiers, repeated slide rows are pooled at patient level, and model
     development uses nested cross-validation before final fitting. The source
     package contains no fitted foundation-model parameters, embeddings,
-    patient-level data, or atlas registry. Users may load authorized model
-    collections from local files or explicitly supply their own download
-    source and checksum. Outputs are research estimates without
+    patient-level data, or atlas registry. Users may download a separately
+    licensed, checksum-verified Prov-GigaPath collection after installation,
+    or load authorized collections from local files. Outputs are research
+    estimates without
     external-validation or clinical-use claims.
 License: MIT + file LICENSE
 Encoding: UTF-8

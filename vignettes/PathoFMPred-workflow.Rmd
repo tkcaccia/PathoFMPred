@@ -28,9 +28,10 @@ input tables or load a collection obtained separately under its applicable
 terms. No model is downloaded during installation, package loading, checking,
 or vignette construction.
 
-The public package distributes no TITAN-, Giga-SSL- or Prov-GigaPath-derived
-fits. Users may build objects locally from authorized inputs; redistribution
-requires separate permission.
+The public package distributes no fitted objects in its installation archive.
+An optional Prov-GigaPath collection is released separately. TITAN and Giga-SSL
+collections remain outside the public release; users may build objects locally
+from inputs they are authorized to use.
 
 The PathoFMPred source code is MIT licensed. Separately obtained fitted
 objects and third-party inputs are not covered by that grant. The package
@@ -44,23 +45,20 @@ recorded in each fitted object before inference. The model metadata also
 records software provenance, but installation from CRAN or another source does
 not change the prediction rule when the package version is the same.
 
-# Use a collection from an authorized source
+# Download the optional Prov-GigaPath collection
 
 ```{r fetch, eval=FALSE, purl=FALSE}
 library(PathoFMPred)
-fetch_pathofmpred_models(
-  foundation_model = "GigaSSL",
-  base_url = "https://authorized.example.org/release",
-  expected_sha256 = c(GigaSSL = "<SHA-256 supplied by the source>")
-)
+fetch_pathofmpred_models("ProvGigaPath")
 available_foundation_models()
 ```
 
-The URL and digest are placeholders. The helper has no built-in model source.
-It requires a user-supplied source and verifies the supplied checksum before
-accepting an object. A user can instead place an authorized
-`pathofmpred_gigassl.rds` or `pathofmpred_provgigapath.rds` in the directory
-returned by `tools::R_user_dir("PathoFMPred", which = "data")`.
+The helper verifies the pinned SHA-256 digest before installing the separately
+licensed object in the user's R data directory. The public Prov-GigaPath
+collection contains 618 fitted models, but no patient-level prediction
+reference scores; its reference ranks are unavailable. Giga-SSL requires an
+explicit authorized source URL and digest, or a locally created collection.
+No download occurs while building this vignette.
 
 # Build a PathoFMPred object from a new representation
 

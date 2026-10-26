@@ -72,13 +72,16 @@ validate_pathofmpred_object <- function(object) {
           "access-controlled private package."
         )
       } else {
-        paste0(
-          "Obtain a collection under its applicable terms, then place ",
-          "pathofmpred_", .pathofm_slug(foundation_model), ".rds in ",
-          .pathofm_user_model_dir(), ". Alternatively, call ",
-          "fetch_pathofmpred_models() with a source URL and SHA-256 ",
-          "provided by the rights holder."
-        )
+        if (identical(foundation_model, "ProvGigaPath")) {
+          "Call fetch_pathofmpred_models(\"ProvGigaPath\") to download the optional verified research collection, or provide an authorized local object."
+        } else {
+          paste0(
+            "Obtain an authorized collection, then place ",
+            "pathofmpred_", .pathofm_slug(foundation_model), ".rds in ",
+            .pathofm_user_model_dir(), ". Alternatively, call ",
+            "fetch_pathofmpred_models() with an explicit source URL and SHA-256."
+          )
+        }
       },
       call. = FALSE
     )
@@ -105,38 +108,53 @@ validate_pathofmpred_object <- function(object) {
 
 #' Download user-authorized PathoFMPred model collections
 #'
-#' The package does not provide model files, download URLs, or checksums. A
-#' download occurs only after the user supplies a source and its SHA-256 digest.
-#' Users must confirm that they may access and use the collection under its
-#' applicable terms. TITAN-derived objects are not supported by this helper;
-#' authorized local TITAN objects can be used directly.
+#' The source package contains no fitted models. For `ProvGigaPath`, the
+#' default is a versioned GitHub release asset whose SHA-256 digest is pinned
+#' in the package. It is downloaded only when this function is called. Other
+#' representations require an explicit authorized URL and SHA-256 digest.
+#' TITAN-derived objects are not downloadable through this helper.
 #'
-#' @param foundation_model One or both of `GigaSSL` and `ProvGigaPath`.
+#' @param foundation_model `ProvGigaPath` or `GigaSSL`.
 #' @param destination Directory in which model collections will be stored.
-#' @param base_url User-supplied HTTPS release directory, or a `file://` URL
-#'   for an authorized local mirror. There is no package default.
-#' @param expected_sha256 Named character vector containing the expected
-#'   64-character SHA-256 digest for every requested representation. Obtain
-#'   these digests independently from the authorized source.
+#' @param base_url Optional HTTPS release directory, or a `file://` URL for
+#'   an authorized local mirror. The pinned Prov-GigaPath release is the
+#'   default when this is omitted.
+#' @param expected_sha256 Optional named character vector containing a
+#'   64-character SHA-256 digest for every requested representation. The
+#'   pinned Prov-GigaPath digest is the default for its release.
 #' @param overwrite Replace an existing file.
 #' @param quiet Passed to [utils::download.file()].
 #' @return Named paths to the downloaded model collections.
 #' @export
 fetch_pathofmpred_models <- function(
-    foundation_model,
+    foundation_model = "ProvGigaPath",
     destination = .pathofm_user_model_dir(),
-    base_url,
-    expected_sha256,
+    base_url = NULL,
+    expected_sha256 = NULL,
     overwrite = FALSE, quiet = FALSE) {
   foundation_model <- unique(match.arg(
     foundation_model, c("GigaSSL", "ProvGigaPath"), several.ok = TRUE
   ))
-  if (missing(base_url) || length(base_url) != 1L || is.na(base_url) ||
+  pinned <- list(
+    base_url = paste0(
+      "https://github.com/tkcaccia/PathoFMPred/releases/download/",
+      "prov-v0.4.0-20261026"
+    ),
+    sha256 = "56a4b1fc88c4f82813ba7e563a0a63852b6f6eadb811e6e1c5ce77a597539535"
+  )
+  if (is.null(base_url) && identical(foundation_model, "ProvGigaPath")) {
+    base_url <- pinned$base_url
+  }
+  if (is.null(expected_sha256) && identical(foundation_model, "ProvGigaPath") &&
+      identical(base_url, pinned$base_url)) {
+    expected_sha256 <- c(ProvGigaPath = pinned$sha256)
+  }
+  if (is.null(base_url) || length(base_url) != 1L || is.na(base_url) ||
       !grepl("^(https|file)://", base_url)) {
-    stop("base_url must be an explicit HTTPS or file:// source supplied by the user.",
+    stop("base_url must be an HTTPS or file:// source; only ProvGigaPath has a pinned default.",
          call. = FALSE)
   }
-  if (missing(expected_sha256) || is.null(names(expected_sha256)) ||
+  if (is.null(expected_sha256) || is.null(names(expected_sha256)) ||
       !all(foundation_model %in% names(expected_sha256)) ||
       anyNA(expected_sha256[foundation_model]) ||
       any(!grepl("^[0-9a-fA-F]{64}$", expected_sha256[foundation_model]))) {

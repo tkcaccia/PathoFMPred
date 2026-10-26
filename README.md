@@ -15,10 +15,10 @@ These models provide internally derived TCGA research estimates. They have not
 been externally validated and are not intended for diagnosis or treatment.
 Binary scores and reference ranks are not probabilities.
 
-See `inst/licenses/MODEL_ACCESS.md` for the package boundary. Earlier GitHub
-model releases have been withdrawn from public access while their
-redistribution rights are reviewed. Existing collaborators retain access
-through the separate private repository.
+See `inst/licenses/MODEL_ACCESS.md` for the package boundary. An optional
+Prov-GigaPath collection is available as a separate, checksum-verified GitHub
+release. TITAN and Giga-SSL fitted objects are not publicly distributed.
+Existing collaborators retain access through the separate private repository.
 
 ## Install
 
@@ -31,27 +31,23 @@ PathoFMPred checks the fastPLS version recorded with each fitted model. The
 current matched-atlas analysis uses fastPLS 0.4. A model built under an older
 version should not be mixed silently with the refreshed atlas results.
 
-## Use an authorized model collection
+## Download the optional Prov-GigaPath collection
 
 ```r
 library(PathoFMPred)
-
-# Place an authorized collection at the path returned by:
-tools::R_user_dir("PathoFMPred", which = "data")
-
-# Alternatively, only when an authorized source has supplied both values:
-fetch_pathofmpred_models(
-  foundation_model = "GigaSSL",
-  base_url = "https://authorized.example.org/release",
-  expected_sha256 = c(GigaSSL = "<64-character SHA-256 digest>")
-)
+fetch_pathofmpred_models("ProvGigaPath")
+available_pathofm_models("ProvGigaPath", cancer = "COAD")
 ```
 
-The URL and digest above are placeholders, not a working release. The user
-must obtain the collection and digest under the applicable terms. Nothing is
-downloaded during installation, package loading, checking, or vignette
-construction. The helper stores verified objects in the user's R data
-directory.
+The function downloads the separately licensed, fastPLS 0.4 fitted collection
+only when called. The release URL and SHA-256 digest are pinned in the package.
+The collection contains 618 cancer-specific Prov-GigaPath models and aggregate
+metadata, but no slide embeddings, patient records, or patient-level reference
+scores. Reference ranks are therefore unavailable from this public collection.
+Nothing is downloaded during installation, package loading, checking, or
+vignette construction. The verified object is stored in the user's R data
+directory. TITAN and Giga-SSL collections require separate authorized access
+or local construction from the published source tables.
 
 ## Build a model collection
 
