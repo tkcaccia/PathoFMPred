@@ -127,17 +127,18 @@ The access-controlled `tkcaccia/PathoFMPred-private` repository contains the
 project's research reference objects. Its access terms are separate from the
 CRAN package licence.
 
-## Apply an authorized fitted collection
+## Apply the downloaded Prov-GigaPath collection
 
 ```r
 library(PathoFMPred)
 
-available_pathofm_models("GigaSSL", "COAD") # after installing the collection
-x <- example_pathofm_features("COAD", "GigaSSL")
+fetch_pathofmpred_models("ProvGigaPath")
+available_pathofm_models("ProvGigaPath", "COAD")
+x <- example_pathofm_features("COAD", "ProvGigaPath")
 pred <- predict_pathofm(
   cancer = "COAD",
   features = x,
-  foundation_model = "GigaSSL",
+  foundation_model = "ProvGigaPath",
   patient_id = "software_example"
 )
 pred[, c("endpoint", "outcome_type", "prediction",

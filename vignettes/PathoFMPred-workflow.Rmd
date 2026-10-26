@@ -308,19 +308,20 @@ their redistribution rights are established in writing.
 
 # Use an authorized atlas collection
 
-The following example works after a Giga-SSL research collection has been
-installed separately under its applicable terms. It is not executable from a
-fresh CRAN installation.
+The following example works after the user explicitly downloads the optional
+Prov-GigaPath research collection. It is not executable from a fresh CRAN
+installation until the download function has been called.
 
 ```{r example, eval=FALSE, purl=FALSE}
-models <- available_pathofm_models("GigaSSL", cancer = "COAD")
+fetch_pathofmpred_models("ProvGigaPath")
+models <- available_pathofm_models("ProvGigaPath", cancer = "COAD")
 models[, c("endpoint", "outcome_type", "n")]
 
-x <- example_pathofm_features("COAD", foundation_model = "GigaSSL")
+x <- example_pathofm_features("COAD", foundation_model = "ProvGigaPath")
 prediction <- predict_pathofm(
   cancer = "COAD",
   features = x,
-  foundation_model = "GigaSSL",
+  foundation_model = "ProvGigaPath",
   patient_id = "software_example"
 )
 prediction[, c("endpoint", "prediction", "predicted_class", "lda_score")]

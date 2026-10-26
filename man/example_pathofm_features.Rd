@@ -6,8 +6,8 @@
 \title{Construct a synthetic feature vector for examples and smoke tests}
 \usage{
 example_pathofm_features(
-  cancer = "BRCA",
-  foundation_model = "TITAN",
+  cancer = "COAD",
+  foundation_model = "ProvGigaPath",
   include_limited_evidence = FALSE
 )
 

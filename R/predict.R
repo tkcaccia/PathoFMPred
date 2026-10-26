@@ -661,7 +661,7 @@ predict_titan <- function(cancer, features, patient_id = NULL,
 #' @return A one-row data frame containing the named features required by the
 #'   selected representation.
 #' @export
-example_pathofm_features <- function(cancer = "BRCA", foundation_model = "TITAN",
+example_pathofm_features <- function(cancer = "COAD", foundation_model = "ProvGigaPath",
                                      include_limited_evidence = FALSE) {
   models <- available_pathofm_models(
     foundation_model, cancer,
